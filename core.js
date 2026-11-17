@@ -256,9 +256,72 @@
   function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }
   const thumb = (id) => 'https://i.ytimg.com/vi/' + encodeURIComponent(id) + '/mqdefault.jpg';
 
+
+  /* ---------- Learn ---------- */
+  const httpsOnly = (l) => l && typeof l.url === 'string' && /^https:\/\//.test(l.url) && typeof l.text === 'string';
+  // Checks and tidies learn.json. Returns null when it isn't one.
+  function prepareLearn(raw) {
+    if (!raw || raw.v !== 1 || !Array.isArray(raw.sets)) return null;
+    const subjects = (Array.isArray(raw.subjects) ? raw.subjects : []).filter((x) => x && typeof x.id === 'string' && typeof x.n === 'string');
+    const sets = raw.sets.map((x) => {
+      if (!x || typeof x.id !== 'string' || typeof x.s !== 'string' || !isFinite(x.d) || !Array.isArray(x.parts)) return null;
+      const parts = x.parts.filter((p) => p && typeof p.title === 'string' && p.title && typeof p.body === 'string')
+        .map((p) => ({ label: String(p.label || ''), title: p.title, body: p.body, code: typeof p.code === 'string' && p.code ? p.code : undefined, links: (p.links || []).filter(httpsOnly) }))
+        .filter((p) => p.links.length);
+      return parts.length >= 2 ? { id: x.id, s: x.s, d: +x.d, credit: String(x.credit || ''), parts } : null;
+    }).filter(Boolean).sort((a, b) => b.d - a.d);
+    return { generated: +raw.generated || (sets[0] && sets[0].d) || 0, subjects, sets };
+  }
+  const subjectName = (L, id) => ((L.subjects.find((x) => x.id === id) || {}).n || id);
+  // subject: 'surprise', a subject id, or 'q:words' for a typed subject
+  function learnSets(L, subject) {
+    if (!L) return [];
+    if (!subject || subject === 'surprise') return L.sets;
+    if (subject.indexOf('q:') === 0) {
+      const q = subject.slice(2);
+      return L.sets.filter((x) => matches({ t: x.parts.map((p) => p.title).join(' '), s: x.parts.map((p) => p.body + ' ' + (p.code || '')).join(' '), p: [subjectName(L, x.s)] }, q));
+    }
+    return L.sets.filter((x) => x.s === subject);
+  }
+  const dayNum = (ms) => Math.floor(dayKey(ms));
+  // The tip of the day: the same for everyone. A subject's newest set; for Surprise me, one of the
+  // morning's sets chosen by the date.
+  function learnFirst(L, subject) {
+    const list = learnSets(L, subject);
+    if (!list.length) return null;
+    if (subject && subject !== 'surprise') return list[0];
+    const k = dayKey(L.generated);
+    const today = list.filter((x) => dayKey(x.d) === k);
+    const pool = today.length ? today : list;
+    return pool[dayNum(L.generated) % pool.length];
+  }
+  // Another set: a subject's next newest one, or for Surprise me and typed subjects any not yet shown
+  function learnNext(L, subject, shown, rand) {
+    const list = learnSets(L, subject);
+    if (!list.length) return null;
+    let left = list.filter((x) => shown.indexOf(x.id) < 0);
+    if (!left.length) { shown.length = 0; left = list.slice(); }
+    if (subject && subject !== 'surprise' && subject.indexOf('q:') !== 0) return left[0];
+    return left[Math.floor((rand == null ? Math.random() : rand) * left.length) % left.length];
+  }
+  // "Apps Script · Tip of the day", or "BigQuery · Yesterday"
+  function learnKicker(L, x, first, now) {
+    const when = first && dayKey(x.d) === dayKey(L.generated) ? 'Tip of the day' : dayLabel(x.d, now);
+    return subjectName(L, x.s) + ' · ' + when;
+  }
+  // The message Daily Drift's embed mode takes
+  function toDD(x, kicker) {
+    return { id: x.id, kicker, credit: x.credit, parts: x.parts.slice(0, 3).map((p) => {
+      const o = { label: p.label, title: p.title, body: p.body, links: p.links.map((l) => ({ text: l.text, url: l.url })) };
+      if (p.code) o.code = p.code;
+      return o;
+    }) };
+  }
+
   const Core = {
     TRACKS, TRACK_NAME, STAGES, TOPICS, TOPIC, TOPIC_GROUPS, FROM_TRACK, inTopic, inTopics, topicCounts, cleanTopics, mergeArchive,
     PERIODS, periodRange, inRange, periodCounts, cleanPeriod,
+    prepareLearn, subjectName, learnSets, learnFirst, learnNext, learnKicker, toDD,
     prepare, dayKey, dayLabel, longDate, shortDate, time, ago, updatedTxt, isStale,
     matches, filter, isNew, newCount, group, topPick, stats, statsTxt, plural, readLabel, extHref, isIntent, hostOf, thumb,
   };

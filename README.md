@@ -11,13 +11,16 @@ Live at **https://quick-sheet.github.io/doGetNews/**. Free, no accounts, no trac
 - **Once a day**, between 7 and 8am UK time, an Apps Script time trigger reads the sources and saves two files into this repo through GitHub's API: `brief.json` (the last two weeks) and `archive.json` (the rest of the three months).
 - **The app** is static files on GitHub Pages. It opens on `brief.json` and loads `archive.json` in the background, so however many people use it, it costs one Apps Script run a day. There is no web app and no refresh button that could call the script.
 - Updates, videos and articles stay for three months. A source that fails one day keeps its earlier updates. Feeds only hold their recent posts, so the history fills in a day at a time.
+- **Learn** has its own run at about 6:30am. It reads Google's own docs and help pages for 19 subjects and saves `learn.json`: one new set a day per subject of Term, Tip (with its code sample) and Did you know (something new from the brief, or another page). Google's developer docs are CC BY 4.0 with code under Apache 2.0, so each set credits and links back to them; Help Center pages contribute only their title and Google's one-line summary. Pages used are remembered in Script Properties, so nothing repeats until a subject's pages have all had a turn. Sets stay for a month.
+- **Learn opens on Daily Drift's own screen** (its embed mode, `?embed=dogetnews`), which doGet(news) sends one set at a time; pulling down there asks for another, with no network call. If Daily Drift can't be reached, a plain card in doGet(news)'s style shows the same set.
 
 ## Set up (once)
 
 1. **Repo and Pages**: create `quick-sheet/doGetNews` (public), upload every file from the zip, turn on Pages (Deploy from a branch, `main`, `/ (root)`).
 2. **GitHub token**: github.com → your photo → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Name it `doGet(news) daily brief`, choose the longest expiry offered, Resource owner `quick-sheet`, Repository access: Only select repositories → `doGetNews`, Repository permissions → **Contents: Read and write**. Copy the token.
 3. **Apps Script**: script.google.com → New project, rename it `doGet(news)`. Paste `apps-script/Code.gs` over the default file. In Project Settings tick "Show appsscript.json manifest file in editor" and paste `apps-script/appsscript.json`. Under Script Properties add `GITHUB_TOKEN` with the token.
-4. In the editor choose **setup** and press **Run**, then approve. It sets the daily trigger and publishes the first brief straight away. The log ends with "Published: … updates".
+4. In the editor choose **setup** and press **Run**, then approve. It sets both daily triggers (Learn at about 6:30, the brief at about 7) and publishes the first brief straight away. The log ends with "Published: … updates".
+5. Choose **learn** and press **Run**, so Learn has its first sets now rather than tomorrow morning. The log ends with "Learn: … new sets".
 
 No deployment is needed: the script has no web app.
 
@@ -45,14 +48,15 @@ If `Code.gs` changes, paste the new version into the Apps Script editor and save
 | `sw.js` | Works offline and picks up new releases |
 | `manifest.webmanifest`, `icon*`, `apple-touch-icon.png` | Install to the home screen |
 | `logo.png` | The rainbow cloud in the header and welcome sheet |
-| `brief.json`, `archive.json` | Written by Apps Script every morning. Don't upload or edit them by hand |
+| `brief.json`, `archive.json`, `learn.json` | Written by Apps Script every morning. Don't upload or edit them by hand |
 | `apps-script/Code.gs`, `appsscript.json` | The daily run. Pasted into Apps Script, not run from here |
 
 ## Good to know
 
 - **Sources** are listed at the top of `Code.gs` and in the app under Settings → Sources, each with today's status. To add a feed, add a line to `SOURCES`.
 - **The token expires.** When it does, the brief stops updating and the app says the brief is old. Make a new token and replace `GITHUB_TOKEN` in Script Properties. The Apps Script Executions page shows the exact error.
-- **Want to check without publishing?** Run `preview` in the editor: it logs what today's brief would contain.
+- **Want to check without publishing?** Run `preview` in the editor: it logs what today's brief would contain. `learnPreview` does the same for Learn.
+- **Learn's subjects** are listed in `LEARN_SUBJECTS` near the end of `Code.gs`, and in the app under Settings → Learn sources with each one's status. To add one, add a line with its starting page and the part of the site its pages live under.
 - **Android sound on every launch** with "Tap to copy the URL for this app": that's Chrome's Full screen site controls notification. Long-press it and turn that category off.
 - Your LinkedIn link goes in the `LINKEDIN` constant near the top of the script in `index.html`.
 - The name is a nod to `doGet()`, where every Apps Script web app begins. This one deliberately has none.

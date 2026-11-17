@@ -339,6 +339,45 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 .welcome .sig a { text-underline-offset: 3px; }
 .welcome .acts { margin-top: 18px; }
 
+/* Learn: Daily Drift's own screen, full height over the app, showing a set of three from Google's docs.
+   If Daily Drift can't be reached, a plain card in doGet(news)'s own style takes its place. */
+.learning, .learning body { overflow: hidden; }
+.learn { position: fixed; inset: 0; z-index: 70; background: var(--bg); opacity: 0; transition: opacity .35s var(--ease); }
+.learn.open { opacity: 1; }
+.learn[hidden] { display: none; }
+.learn-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; opacity: 0; transition: opacity .6s var(--ease); background: transparent; }
+.learn.ready .learn-frame { opacity: 1; }
+.learn-load { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; color: var(--on-var); font-size: 15px; transition: opacity .4s; }
+.learn.ready .learn-load, .learn.card .learn-load { opacity: 0; pointer-events: none; }
+.learn-load img { height: 56px; width: auto; animation: bob 2.4s ease-in-out infinite; }
+.learn-card { position: absolute; inset: 0; display: flex; flex-direction: column; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px); }
+.learn-card[hidden] { display: none; }
+.lc-top { display: flex; align-items: center; gap: 4px; padding: 8px 8px 4px; max-width: 36rem; width: 100%; margin: 0 auto; }
+.lc-kicker { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; height: 40px; padding: 0 8px 0 14px; border-radius: 20px; font-size: 14px; font-weight: 500; color: var(--primary); text-align: left; }
+.lc-kicker span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-kicker svg.i { width: 20px; height: 20px; }
+.lc-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.lc-in { max-width: 36rem; margin: 0 auto; padding: 4px 16px calc(32px + env(safe-area-inset-bottom, 0px)); transition: transform .3s var(--glide), opacity .3s; }
+.lc-pull { height: 0; overflow: hidden; display: grid; place-items: center; font-size: 13px; color: var(--on-var); }
+.lc-part { background: var(--card); border-radius: 24px; padding: 16px 16px 10px 18px; margin: 10px 0 0; animation: rise .45s var(--glide) both; }
+.lc-part[data-k="1"] { animation-delay: .06s; } .lc-part[data-k="2"] { animation-delay: .12s; }
+.lc-label { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .03em; background: var(--secondary-c); color: var(--on-secondary-c); }
+.lc-part[data-k="1"] .lc-label { background: var(--tertiary-c); color: var(--on-tertiary-c); }
+.lc-part[data-k="2"] .lc-label { background: var(--primary-c); color: var(--on-primary-c); }
+.lc-part h2 { margin: 8px 0 0; font-size: 20px; line-height: 26px; font-weight: 500; }
+.lc-part p { margin: 6px 0 0; font-size: 15px; line-height: 22px; color: var(--on-var); }
+.lc-part pre { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--card-2); overflow-x: auto; font: 400 13px/19px var(--code); color: var(--on); }
+.lc-credit { margin: 14px 4px 0; font-size: 12px; line-height: 16px; color: var(--on-var); }
+.lc-next { display: flex; align-items: center; gap: 8px; margin: 14px auto 0; height: 40px; padding: 0 18px 0 14px; border-radius: 20px; font-size: 14px; font-weight: 500; color: var(--on-secondary-c); background: var(--secondary-c); }
+.lc-empty { margin: 40px 8px 0; text-align: center; color: var(--on-var); font-size: 15px; }
+.lc-empty img { height: 56px; width: auto; display: block; margin: 0 auto 14px; }
+.lq { display: flex; align-items: center; gap: 4px; height: 48px; margin: 0 4px; padding: 0 4px 0 14px; border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1px var(--outline-var); }
+.lq input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 16px; color: var(--on); }
+.lq-out { margin: 10px 8px 0; font-size: 14px; color: var(--on-var); }
+.lq-out a { color: var(--primary); }
+.lq-out ul { margin: 6px 0 0; padding-left: 18px; }
+.lq-out li { margin: 4px 0; }
+
 /* Loading: the rainbow cloud floats gently while the brief arrives */
 .loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 0 18px; }
 .loading img { height: 56px; width: auto; animation: bob 2.4s ease-in-out infinite; }
@@ -364,7 +403,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .rv { opacity: 1; transform: none; }
   .spinner { animation: spin 1.6s linear infinite !important; }
-  .loading img { animation: breathe 2.4s ease-in-out infinite !important; }   /* still, just a slow fade */
+  .loading img, .learn-load img { animation: breathe 2.4s ease-in-out infinite !important; }   /* still, just a slow fade */
 }
 </style>
 </head>
@@ -404,10 +443,14 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 </div>
 <button class="to-top" id="toTop" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <nav class="navbar" id="navbar" aria-label="Views"><div class="navbar-in" id="navIn"></div></nav>
+<div class="learn" id="learn" role="dialog" aria-modal="true" aria-label="Learn" hidden>
+  <div class="learn-load" id="learnLoad"><img src="logo.png" alt="" width="88" height="56"><span>Getting today’s tip…</span></div>
+  <div class="learn-card" id="learnCard" hidden></div>
+</div>
 <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody" tabindex="-1"></div></dialog>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=5"></script>
+<script src="core.js?v=6"></script>
 <script>
 (() => {
 'use strict';
@@ -419,9 +462,13 @@ const APP_URL = 'https://quick-sheet.github.io/doGetNews/';
 const PER_DAY = 10;    // updates shown per day before "Show more"
 const DAYS_STEP = 14;  // days shown at a time; older ones load as you reach the end
 const NAME = 'doGet(news)';
+// Learn opens Daily Drift's own screen in embed mode and sends it the sets (see the Daily Drift side)
+const DD_URL = 'https://quick-sheet.github.io/DailyDrift/';
+const DD_ORIGIN = new URL(DD_URL).origin;
+const DD_WAIT = 8000;   // if Daily Drift hasn't said hello by then, the plain card takes over
 const BAR = { light: '#F0F4F9', dark: '#131314' };
 
-const VIEWS = [{ id: 'brief', n: 'Brief', ic: 'news' }, { id: 'watch', n: 'Watch', ic: 'watch' }, { id: 'stars', n: 'Starred', ic: 'starOff', on: 'starOn' }];
+const VIEWS = [{ id: 'brief', n: 'Brief', ic: 'news' }, { id: 'watch', n: 'Watch', ic: 'watch' }, { id: 'learn', n: 'Learn', ic: 'school', opens: true }, { id: 'stars', n: 'Starred', ic: 'starOff', on: 'starOn' }];
 
 const UA = navigator.userAgent;
 const isIOS = /iP(hone|ad|od)/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -445,7 +492,7 @@ const S = {
 };
 // From v1: a track becomes the matching topic, and every track is now in Brief
 if (get('topics', null) == null && C.FROM_TRACK[S.view]) { S.topics = [C.FROM_TRACK[S.view]]; put('topics', S.topics); }
-if (!VIEWS.some((v) => v.id === S.view)) { S.view = 'brief'; put('view', S.view); }
+if (!VIEWS.some((v) => v.id === S.view && !v.opens)) { S.view = 'brief'; put('view', S.view); }
 delete S.set.hidden;
 const saveSet = () => put('settings', S.set);
 
@@ -481,6 +528,8 @@ const P = {
   watch: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM9.5 16.5v-9l7 4.5-7 4.5z',
   filter: 'M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z',
   filterOff: 'M14.76 12 20 5.3A1 1 0 0 0 19.21 4H6.76zM2.81 2.81 1.39 4.22 10 13v6a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2.17l5.78 5.78 1.41-1.41z',
+  school: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z',
+  back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
 };
 const icon = (k, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[k]}"/></svg>`;
 const LOGO = '<img class="logo" src="logo.png" alt="" width="88" height="56">';
@@ -874,7 +923,9 @@ function renderNav() {
     const cur = S.view === v.id;
     const badge = v.id === 'stars' && n ? `<span class="badge num" aria-hidden="true">${n}</span>` : '';
     const ic = v.on ? icon(v.ic, 'off-i') + icon(v.on, 'on-i') : icon(v.ic);
-    return `<button class="nb" type="button" data-view="${v.id}"${cur ? ' aria-current="page"' : ''} aria-label="${esc(v.n + (v.id === 'stars' && n ? ', ' + n : ''))}"><span class="ind">${ic}${badge}</span><span>${esc(v.n)}</span></button>`;
+    // Learn opens over the app rather than being a page of its own
+    const act = v.opens ? `data-act="learn" aria-haspopup="dialog"` : `data-view="${v.id}"${cur ? ' aria-current="page"' : ''}`;
+    return `<button class="nb" type="button" ${act} aria-label="${esc(v.n + (v.id === 'stars' && n ? ', ' + n : ''))}"><span class="ind">${ic}${badge}</span><span>${esc(v.n)}</span></button>`;
   }).join('');
 }
 
@@ -1052,7 +1103,221 @@ function openSettings() {
     <h3>Sources</h3>
     <p class="small">${b ? esc(C.updatedTxt(b.generated, now())) + '. ' : ''}Read once a day at about 7am UK time, and kept for three months. There’s no refresh button: the brief is the same for everyone, so it takes one Apps Script run a day.</p>
     ${sourcesHtml()}
+
+    <h3>Learn sources</h3>
+    <p class="small">Google’s own docs and help pages, read at about 6:30am UK time. Each subject gets a new set every morning, and sets are kept for a month.</p>
+    <div id="learnSources">${learnSourcesHtml()}</div>
   `, 'settings');
+  if (!L.data) loadLearn().then(() => { const el = $('#learnSources'); if (el && sheet.open) el.innerHTML = learnSourcesHtml(); });
+}
+
+/* ---------- Learn ---------- */
+// learn.json is written by its own Apps Script run at about 6:30 each morning. Opening Learn shows
+// Daily Drift's own screen (embed mode) and hands it one set at a time; pulling down there asks for
+// another. Nothing here calls Apps Script.
+const L = { data: null, at: 0, loading: null, missing: false, subject: get('learnSubject', 'surprise'), shown: [], cur: null, first: true, open: false, mode: '', frame: null, timer: 0 };
+const layer = $('#learn');
+function loadLearn() {
+  if (L.data && now() - L.at < 10 * 60e3) return Promise.resolve(L.data);
+  if (L.loading) return L.loading;
+  L.loading = (async () => {
+    try {
+      const r = await fetch('learn.json', { cache: 'no-cache' });
+      if (r.status === 404) { L.missing = true; return null; }
+      if (!r.ok) throw new Error('status ' + r.status);
+      const d = C.prepareLearn(await r.json());
+      if (d) { L.data = d; L.at = now(); L.missing = false; }
+    } catch { /* keep what we had */ }
+    return L.data;
+  })().finally(() => { L.loading = null; });
+  return L.loading;
+}
+const subjectOK = (id) => id === 'surprise' || (id.indexOf('q:') === 0 ? C.learnSets(L.data, id).length > 0 : L.data.subjects.some((x) => x.id === id) && C.learnSets(L.data, id).length > 0);
+function current() {
+  if (!subjectOK(L.subject)) L.subject = 'surprise';
+  return L.cur || (L.cur = C.learnFirst(L.data, L.subject));
+}
+const kicker = () => C.learnKicker(L.data, L.cur, L.first, now());
+
+async function openLearn() {
+  if (L.open) return;
+  L.open = true;
+  layer.hidden = false;
+  layer.className = 'learn';
+  requestAnimationFrame(() => layer.classList.add('open'));
+  document.documentElement.classList.add('learning');
+  history.pushState({ learn: 1 }, '');
+  await loadLearn();
+  if (!L.open) return;
+  if (!L.data || !L.data.sets.length) { showCard(); return; }
+  L.shown = []; L.cur = null; L.first = true;
+  current();
+  L.shown.push(L.cur.id);
+  startFrame();
+}
+function closeLearn(fromPop) {
+  if (!L.open) return;
+  L.open = false;
+  clearTimeout(L.timer);
+  layer.classList.remove('open');
+  document.documentElement.classList.remove('learning');
+  setTimeout(() => {
+    if (L.open) return;
+    if (L.frame) { L.frame.remove(); L.frame = null; }   // stops Daily Drift's sound with it
+    layer.hidden = true;
+    $('#learnCard').hidden = true;
+  }, reduced() ? 0 : 360);
+  if (!fromPop && history.state && history.state.learn) history.back();
+}
+
+// Daily Drift's screen, in a frame. It says hello (dd:ready), then gets the set.
+function startFrame() {
+  L.mode = 'dd';
+  const f = document.createElement('iframe');
+  f.className = 'learn-frame';
+  f.title = 'Learn, on Daily Drift';
+  f.allow = 'autoplay; accelerometer; gyroscope; web-share; clipboard-write';
+  f.src = DD_URL + '?embed=dogetnews&tone=' + theme();
+  L.frame = f;
+  layer.appendChild(f);
+  L.timer = setTimeout(() => { if (L.mode === 'dd' && !layer.classList.contains('ready')) showCard(); }, DD_WAIT);
+}
+function sendSet() {
+  if (!L.frame || !L.frame.contentWindow) return;
+  L.frame.contentWindow.postMessage({ type: 'dd:set', v: 1, set: C.toDD(L.cur, kicker()) }, DD_ORIGIN);
+}
+addEventListener('message', (e) => {
+  if (!L.frame || e.source !== L.frame.contentWindow || e.origin !== DD_ORIGIN) return;
+  const m = e.data;
+  if (!m || typeof m !== 'object' || m.v !== 1 || L.mode !== 'dd') return;
+  if (m.type === 'dd:ready') { clearTimeout(L.timer); sendSet(); layer.classList.add('ready'); }
+  else if (m.type === 'dd:more') { nextSet(); sendSet(); }
+  else if (m.type === 'dd:pick') openPicker();
+  else if (m.type === 'dd:close') closeLearn();
+});
+function nextSet() {
+  const x = C.learnNext(L.data, L.subject, L.shown);
+  if (!x) return;
+  L.cur = x; L.first = false;
+  L.shown.push(x.id);
+}
+
+// The plain card: the same set in doGet(news)'s own style, with the same pull-down for another
+function showCard() {
+  clearTimeout(L.timer);
+  if (L.frame) { L.frame.remove(); L.frame = null; }
+  L.mode = 'card';
+  layer.classList.add('card');
+  $('#learnCard').hidden = false;
+  renderCard();
+}
+const linkBtn = (l, i) => linkIcon(l.url, i ? 'tonal' : 'filled', /video|watch/i.test(l.text) ? 'play' : 'open', l.text);
+function renderCard() {
+  const el = $('#learnCard');
+  const top = (k) => `<div class="lc-top"><button class="ib sl" type="button" data-act="learn-close" aria-label="Back to the brief" title="Back">${icon('back')}</button>
+    ${k ? `<button class="lc-kicker sl" type="button" data-act="learn-pick" aria-label="${esc(k + '. Choose a subject')}"><span>${esc(k)}</span>${icon('more')}</button>
+    <button class="ib sl" type="button" data-act="learn-share" aria-label="Share this set" title="Share">${icon('share')}</button>` : '<span style="flex:1"></span>'}</div>`;
+  if (!L.data || !L.data.sets.length) {
+    el.innerHTML = top('') + `<div class="lc-scroll"><div class="lc-empty"><img src="logo.png" alt="" width="88" height="56">
+      ${L.missing || (L.data && !L.data.sets.length) ? 'Learn’s first sets arrive at about 6:30am UK time. Check back after that.' : 'Couldn’t load Learn just now. Check your connection, then try again.'}</div></div>`;
+    return;
+  }
+  const x = L.cur;
+  el.innerHTML = top(kicker()) + `<div class="lc-scroll" id="lcScroll"><div class="lc-in" id="lcIn"><div class="lc-pull" id="lcPull">Release for another</div>
+    ${x.parts.map((p, i) => `<section class="lc-part" data-k="${i}"><span class="lc-label">${esc(p.label)}</span><h2>${esc(p.title)}</h2><p>${esc(p.body)}</p>
+      ${p.code ? `<pre><code>${esc(p.code)}</code></pre>` : ''}<div class="acts">${p.links.map(linkBtn).join('')}<span class="hint">${esc(p.links[0].text)}</span></div></section>`).join('')}
+    <p class="lc-credit">${esc(x.credit)}</p>
+    <button class="lc-next sl" type="button" data-act="learn-next">${icon('refresh')}Another set</button></div></div>`;
+  pullToNext($('#lcScroll'));
+}
+function cardNext() {
+  nextSet();
+  const inner = $('#lcIn');
+  if (!inner || reduced()) { renderCard(); return; }
+  inner.style.opacity = '0';
+  setTimeout(() => { renderCard(); $('#lcScroll').scrollTop = 0; }, 220);
+}
+// Pull down from the top for another set, as on Daily Drift
+function pullToNext(sc) {
+  let y0 = null, dy = 0;
+  const inner = $('#lcIn', sc), hint = $('#lcPull', sc);
+  sc.addEventListener('touchstart', (e) => { y0 = sc.scrollTop <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+  sc.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0) { inner.style.transform = ''; return; }
+    e.preventDefault();
+    const d = Math.min(110, dy * 0.5);
+    if (!reduced()) inner.style.transform = `translateY(${d}px)`;
+    hint.style.height = d > 30 ? '28px' : '0';
+    hint.textContent = dy > 120 ? 'Release for another' : 'Pull for another';
+  }, { passive: false });
+  sc.addEventListener('touchend', () => {
+    if (y0 == null) return;
+    y0 = null;
+    inner.style.transform = ''; hint.style.height = '0';
+    if (dy > 120) cardNext();
+  });
+}
+async function shareSet() {
+  const x = L.cur, link = x.parts[0].links[0].url;
+  const text = kicker() + ': ' + x.parts.map((p) => p.title).join(' · ') + '\n' + link + '\nFrom ' + NAME + ': ' + APP_URL;
+  try { if (navigator.share) { await navigator.share({ title: NAME, text }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(text); toast('Copied, ready to paste'); } catch { toast('Couldn’t share just now'); }
+}
+
+// Choosing a subject: Surprise me, one of the subjects, or a word of your own
+function openPicker() {
+  if (!L.data) return;
+  const groups = [];
+  L.data.subjects.forEach((x) => { if (groups.indexOf(x.g) < 0) groups.push(x.g); });
+  const chip = (id, n, c) => `<button class="chip sl" type="button" data-subject="${esc(id)}" aria-pressed="${L.subject === id}">${icon('check')}${esc(n)}${c != null ? `<span class="c num">${c}</span>` : ''}</button>`;
+  openSheet(head('Learn about') + `<p class="small">A new set arrives for each subject every morning. Pull down for another.</p>
+    <div class="chipset">${chip('surprise', 'Surprise me')}</div>
+    ${groups.map((g) => `<h3>${esc(g || 'More')}</h3><div class="chipset">${L.data.subjects.filter((x) => x.g === g && C.learnSets(L.data, x.id).length).map((x) => chip(x.id, x.n, C.learnSets(L.data, x.id).length)).join('')}</div>`).join('')}
+    <h3>Or type a subject</h3>
+    <form class="lq" id="lqForm" role="search"><label class="vh" for="lq">A subject of your own</label><input id="lq" type="search" placeholder="e.g. triggers, clasp, Firestore" autocomplete="off" enterkeyhint="go" value="${esc(L.subject.indexOf('q:') === 0 ? L.subject.slice(2) : '')}">
+      <button class="ib sl filled" type="submit" aria-label="Show sets about this" title="Show">${icon('arrow')}</button></form>
+    <div class="lq-out" id="lqOut" aria-live="polite"></div>`, 'learnpick');
+  typed();
+}
+function typed() {
+  const box = $('#lq'), out = $('#lqOut');
+  if (!box || !out) return;
+  const q = box.value.trim();
+  if (!q) { out.innerHTML = ''; return; }
+  const n = C.learnSets(L.data, 'q:' + q).length;
+  const enc = encodeURIComponent(q);
+  out.innerHTML = n ? `${esc(C.plural(n, 'set mentions', 'sets mention'))} “${esc(q)}”.`
+    : `Nothing on “${esc(q)}” in Learn yet. Try Google’s own search:<ul>
+      <li><a ${attrs('https://developers.google.com/s/results?q=' + enc)}>Google developer docs</a></li>
+      <li><a ${attrs('https://cloud.google.com/s/results?q=' + enc)}>Google Cloud docs</a></li>
+      <li><a ${attrs('https://www.youtube.com/results?search_query=' + encodeURIComponent('Google ' + q + ' tutorial'))}>Videos on YouTube</a></li></ul>`;
+}
+function chooseSubject(id) {
+  if (!L.data || !subjectOK(id)) return false;
+  L.subject = id; put('learnSubject', id);
+  L.shown = []; L.cur = null; L.first = true;
+  current();
+  L.shown.push(L.cur.id);
+  closeSheet();
+  if (L.mode === 'dd') sendSet(); else if (L.mode === 'card') renderCard();
+  return true;
+}
+document.addEventListener('submit', (e) => {
+  if (e.target.id !== 'lqForm') return;
+  e.preventDefault();
+  const q = $('#lq').value.trim();
+  if (q && !chooseSubject('q:' + q)) typed();
+});
+document.addEventListener('input', (e) => { if (e.target.id === 'lq') typed(); });
+
+function learnSourcesHtml() {
+  if (!L.data || !L.data.subjects.length) return '<p class="small">The Learn sources appear with its first sets, at about 6:30am UK time.</p>';
+  return `<div class="group">${L.data.subjects.map((x) => {
+    const line = x.ok ? `${C.plural(x.c, 'new set', 'new sets')} this morning` : `Not read today: it ${esc(x.e || 'could not be reached')}`;
+    return `<a class="row sl src-row learn-src" ${attrs(x.h)}><span class="${x.ok ? 'dot-ok' : 'dot-bad'}" aria-hidden="true"></span><span class="txt">${esc(x.n)}<small>${line}</small></span></a>`;
+  }).join('')}</div>`;
 }
 
 /* Drag a sheet down by its top band, or swipe it right, to close it */
@@ -1148,7 +1413,10 @@ function closeSearch(fromPop) {
 }
 $('#q').addEventListener('input', () => { S.q = $('#q').value; S.open = null; S.days = DAYS_STEP; render(); });
 $('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
-window.addEventListener('popstate', () => { if (S.searching) closeSearch(true); });
+window.addEventListener('popstate', () => {
+  if (L.open && !(history.state && history.state.learn)) { closeLearn(true); return; }
+  if (S.searching) closeSearch(true);
+});
 
 /* ---------- Share ---------- */
 async function share() {
@@ -1173,6 +1441,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (d.period) { setPeriod(d.period); return; }
+  if (d.subject) { chooseSubject(d.subject); return; }
   if (d.topic) {
     const on = S.topics.indexOf(d.topic) >= 0;
     setTopics(on ? S.topics.filter((x) => x !== d.topic) : S.topics.concat([d.topic]));
@@ -1205,6 +1474,11 @@ document.addEventListener('click', (e) => {
     case 'retry': load(); break;
     case 'archive': S.arch = 'idle'; loadArchive(); break;
     case 'topics': openTopics(); break;
+    case 'learn': openLearn(); break;
+    case 'learn-close': closeLearn(); break;
+    case 'learn-pick': openPicker(); break;
+    case 'learn-next': cardNext(); break;
+    case 'learn-share': shareSet(); break;
     case 'clear-topics': setTopics([]); break;
     case 'only-new': S.onlyNew = !S.onlyNew; S.open = null; S.days = DAYS_STEP; freshView(); render(); break;
     case 'quiet': S.set.quiet = !S.set.quiet; saveSet(); t.setAttribute('aria-checked', String(S.set.quiet)); render(); break;
@@ -1219,7 +1493,10 @@ $('#searchBtn').addEventListener('click', () => (S.searching ? closeSearch() : o
 $('#searchClose').addEventListener('click', () => closeSearch());
 // A thumbnail that can't load leaves a plain tile
 document.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.target.remove(); }, true);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.searching && !sheet.open) closeSearch(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || sheet.open) return;
+  if (L.open) closeLearn(); else if (S.searching) closeSearch();
+});
 $('#period').addEventListener('keydown', (e) => {
   const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
   if (!step) return;
