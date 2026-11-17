@@ -16,7 +16,7 @@
   })();
 </script>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -44,8 +44,6 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 12px 30px -14px rgba(0, 0, 0, .22);
   /* Back to top, as on the EmailGuru page */
   --btn: #0B0B0C; --on-btn: #FFFFFF;
-  /* Skies behind the page: a morning blue with a warm sun at the top, a soft dusk at the bottom */
-  --sky-1: #C6DAFB; --sky-2: #E1EBFB; --sun: rgba(255, 214, 140, .7); --wisp: rgba(255, 255, 255, .9); --dusk-1: #E4ECFA; --dusk-2: #FCE6BF;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -60,7 +58,6 @@
   --pill: rgba(19, 19, 20, .8); --line: #2A2B2E;
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 30px -14px rgba(0, 0, 0, .7);
   --btn: #F4F4F5; --on-btn: #0A0A0B;
-  --sky-1: #0E2A55; --sky-2: #13203A; --sun: rgba(242, 192, 99, .14); --wisp: rgba(168, 199, 250, .13); --dusk-1: #15213A; --dusk-2: #2E2412;
   color-scheme: dark;
 }
 :root {
@@ -75,29 +72,8 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--on); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
-  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); min-height: 100vh; overflow-x: clip; position: relative;
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); min-height: 100vh; overflow-x: clip;
 }
-/* Skies, after the EmailGuru page's soft cloud banks: layered behind the content, so they take no room.
-   One at the top behind the header and hero, a dusk at the very end behind the footer, one in the welcome sheet. */
-.sky-band, .dusk { position: absolute; left: 0; right: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-.sky-band { top: 0; height: 360px; background: linear-gradient(180deg, var(--sky-1) 0, var(--sky-2) 42%, transparent 100%); will-change: transform;
-  -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
-.dusk { bottom: 0; height: 380px; background: linear-gradient(180deg, transparent 0, var(--dusk-1) 45%, var(--dusk-2) 100%);
-  -webkit-mask-image: linear-gradient(0deg, #000 55%, transparent); mask-image: linear-gradient(0deg, #000 55%, transparent); }
-.sun { position: absolute; right: -110px; top: -150px; width: 440px; height: 440px; background: radial-gradient(closest-side, var(--sun), transparent); }
-.dusk .sun { right: auto; left: -120px; top: auto; bottom: -230px; width: 520px; height: 420px; }
-.wisp { position: absolute; left: 0; top: var(--y); width: var(--w); height: var(--h); opacity: var(--o, 1);
-  background: radial-gradient(closest-side, var(--wisp), transparent); animation: waft var(--t) linear var(--dl) infinite; will-change: transform; }
-@keyframes waft { from { transform: translateX(calc(var(--w) * -1)); } to { transform: translateX(100vw); } }
-.w1 { --y: 70px; --w: 420px; --h: 54px; --t: 110s; --dl: -30s; }
-.w2 { --y: 138px; --w: 300px; --h: 40px; --t: 150s; --dl: -95s; --o: .8; }
-.w3 { --y: 24px; --w: 240px; --h: 34px; --t: 90s; --dl: -62s; --o: .7; }
-.dusk .w1 { --y: 150px; --t: 140s; --dl: -20s; }
-.dusk .w2 { --y: 236px; --t: 120s; --dl: -70s; }
-.sheet-sky { position: absolute; inset: 0 0 auto 0; height: 190px; z-index: -1; overflow: hidden; pointer-events: none; background: linear-gradient(180deg, var(--sky-1) 0, var(--sky-2) 55%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent); mask-image: linear-gradient(180deg, #000 40%, transparent); }
-.sheet-sky .w1 { --y: 46px; } .sheet-sky .w2 { --y: 96px; }
-
 /* Back to top, exactly as on the EmailGuru page: it rises in once you're most of a screen down */
 .to-top { position: fixed; z-index: 40; right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(var(--navbar) + 1px + env(safe-area-inset-bottom, 0px) + 20px); width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--btn); color: var(--on-btn); cursor: pointer; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .35s, transform .45s var(--glide); }
 .to-top.show { opacity: 1; transform: none; pointer-events: auto; }
@@ -149,10 +125,11 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .nav { position: fixed; z-index: 50; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; padding: 0 max(12px, env(safe-area-inset-left, 0px)); }
 .pill { pointer-events: auto; display: flex; align-items: center; gap: 4px; padding: 6px; background: var(--pill); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); transition: background-color .4s; }
 .logo-btn { display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 0 12px 0 6px; border-radius: 999px; color: var(--on); white-space: nowrap; }
-.logo-btn svg { width: 26px; height: 26px; flex: 0 0 26px; display: block; }
+.logo-btn img { height: 24px; width: auto; flex: none; display: block; }
 .wordmark { font: 500 16px/1 var(--code); letter-spacing: -.02em; }
-.wordmark .arg { color: var(--primary); }
-.wordmark .par { color: var(--on-var); }
+.wordmark .par, .wm-g .par { color: var(--on-var); }
+/* "news" in Google's own colours: blue, red, yellow, green */
+.g1 { color: #4285F4; } .g2 { color: #EA4335; } .g3 { color: #FBBC05; } .g4 { color: #34A853; }
 .pill-more { display: grid; grid-template-columns: 0fr; transition: grid-template-columns .55s var(--glide); }
 .pill-more > div { min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 2px; white-space: nowrap; opacity: 0; transition: opacity .35s; }
 .pill.open .pill-more { grid-template-columns: 1fr; }
@@ -195,7 +172,19 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .notice { display: flex; gap: 8px; align-items: center; margin: 4px 0 12px; padding: 8px 4px 8px 16px; border-radius: 16px; background: var(--card-2); font-size: 14px; line-height: 20px; color: var(--on-var); }
 .notice p { margin: 0; flex: 1; }
 
-/* Hero card, with a little weather of its own: clouds drifting behind three months of weekly bars */
+/* When: Today, Yesterday, This week, This month, All. Each shows how many updates it holds, and the
+   chosen one is marked by a fill that glides across. */
+.period { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 4px; margin: 12px 0 0; border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1px var(--outline-var); }
+.period[hidden] { display: none; }
+.seg-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 5); border-radius: 16px; background: var(--secondary-c); transform: translateX(calc(var(--sel, 4) * 100%)); transition: transform .45s var(--glide); }
+.seg { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 60px; padding: 8px 2px; border-radius: 16px; color: var(--on-var); transition: color .2s; }
+.seg .n { font-size: 20px; line-height: 24px; font-weight: 500; color: var(--on); transition: color .2s; }
+.seg .l { font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; }
+.seg[aria-checked="true"], .seg[aria-checked="true"] .n { color: var(--on-secondary-c); }
+.seg:active { background: color-mix(in srgb, currentColor 10%, transparent); }
+@media (max-width: 370px) { .seg .l { font-size: 11px; } .seg .n { font-size: 18px; } }
+
+/* Hero card, with a little weather of its own: clouds drifting across the top */
 .hero { position: relative; overflow: hidden; isolation: isolate; background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 55%, var(--card)) 0, var(--card) 150px); border-radius: 28px; margin: 12px 0 16px; }
 :root[data-theme="dark"] .hero { background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 38%, var(--card)) 0, var(--card) 150px); }
 .hero[hidden] { display: none; }
@@ -213,14 +202,6 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .c1 { --y: 6px; --s: .9; --t: 95s; --dl: -24s; }
 .c2 { --y: 44px; --s: .62; --t: 125s; --dl: -78s; --o: .85; }
 .c3 { --y: 16px; --s: 1.15; --t: 150s; --dl: -118s; --o: .7; }
-/* Weekly bars: each grows in when its number changes, so the older weeks rise as the archive arrives */
-.strip span.grow { animation: grow .7s var(--ease) both; animation-delay: calc(var(--i) * 32ms); transform-origin: bottom; }
-@keyframes grow { from { transform: scaleY(0); } }
-.strip { display: flex; align-items: flex-end; gap: 5px; height: 48px; margin: 2px 4px 6px 0; }
-.strip span { flex: 1; min-width: 0; border-radius: 4px; background: var(--primary); opacity: .32; min-height: 4px; }
-.strip span.zero { background: var(--outline-var); opacity: 1; }
-.strip span.now { background: var(--tertiary); opacity: 1; }
-.strip-key { display: flex; justify-content: space-between; font-size: 12px; color: var(--on-var); margin: 0 4px 16px 0; }
 .eyebrow { margin: 0 0 6px; font-size: 14px; font-weight: 500; color: var(--primary); }
 .title-row { display: flex; align-items: flex-start; gap: 4px; }
 .title-row > div { flex: 1; min-width: 0; }
@@ -315,7 +296,7 @@ dialog.sheet[open] { animation: rise .3s var(--ease); }
 dialog.sheet::backdrop { background: var(--scrim); }
 dialog.sheet.springing { transition: transform .22s var(--ease); }
 @keyframes rise { from { transform: translateY(48px); opacity: 0; } }
-.sheet-in { position: relative; isolation: isolate; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); outline: none; }
+.sheet-in { padding: 0 16px calc(24px + env(safe-area-inset-bottom)); outline: none; }
 .grabber { position: relative; width: 72px; height: 22px; margin: 0 auto 2px; }
 .grabber::before { content: ""; position: absolute; left: 20px; right: 20px; top: 11px; height: 4px; border-radius: 2px; background: var(--on-var); opacity: .4; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; padding-left: 8px; }
@@ -339,7 +320,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 .switch[aria-checked="true"] { background: var(--primary); box-shadow: none; }
 .switch[aria-checked="true"]::after { top: 4px; left: 24px; width: 24px; height: 24px; background: var(--on-primary); }
 .welcome { padding: 4px 8px 0; }
-.welcome .logo { width: 56px; height: 56px; display: block; margin: 6px 0 16px; }
+.welcome .logo { width: auto; height: 56px; display: block; margin: 6px 0 16px; }
 .welcome h2 { margin: 0 0 8px; font-size: 28px; line-height: 36px; font-weight: 400; }
 .welcome h2 code, .wm { font-family: var(--code); font-weight: 500; letter-spacing: -.02em; }
 .welcome .lede { color: var(--on); font-size: 18px; line-height: 26px; font-weight: 500; }
@@ -370,12 +351,11 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 </style>
 </head>
 <body>
-<div class="sky-band" id="pageSky" aria-hidden="true"><span class="sun"></span><span class="wisp w1"></span><span class="wisp w2"></span><span class="wisp w3"></span></div>
 <header class="nav" id="nav">
   <div class="pill" id="pill">
     <button class="logo-btn sl" id="logoBtn" type="button" aria-label="doGet(news). Back to the top">
-      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="128" fill="#0B57D0"/><path d="M190 132c-44 32-70 76-70 124s26 92 70 124M322 132c44 32 70 76 70 124s-26 92-70 124" fill="none" stroke="#fff" stroke-width="36" stroke-linecap="round"/><circle cx="256" cy="256" r="38" fill="#F2C063"/></svg>
-      <span class="wordmark" aria-hidden="true">doGet<span class="par">(</span><span class="arg">news</span><span class="par">)</span></span>
+      <img src="logo.png" alt="" width="38" height="24">
+      <span class="wordmark" aria-hidden="true">doGet<span class="par">(</span><span class="g1">n</span><span class="g2">e</span><span class="g3">w</span><span class="g4">s</span><span class="par">)</span></span>
     </button>
     <div class="pill-more" id="pillMore">
       <div id="pillTools">
@@ -396,6 +376,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <div class="wrap">
   <div id="notices"></div>
   <main>
+    <div class="period" id="period" role="radiogroup" aria-label="Show updates from" data-rv="period" hidden></div>
     <section class="hero" id="hero" data-rv="hero"><div class="sky" id="sky" aria-hidden="true"><span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span></div><div class="hero-in" id="heroIn" aria-live="polite"></div></section>
     <div id="bar"></div>
     <div id="list"></div>
@@ -403,13 +384,12 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
   </main>
   <footer class="foot" id="foot"></footer>
 </div>
-<div class="dusk" aria-hidden="true"><span class="sun"></span><span class="wisp w1"></span><span class="wisp w2"></span></div>
 <button class="to-top" id="toTop" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <nav class="navbar" id="navbar" aria-label="Views"><div class="navbar-in" id="navIn"></div></nav>
 <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody" tabindex="-1"></div></dialog>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=2"></script>
+<script src="core.js?v=3"></script>
 <script>
 (() => {
 'use strict';
@@ -438,6 +418,7 @@ const S = {
   brief: null, loading: true, missing: false, failed: false, saved: false, fetchedAt: 0,
   view: get('view', 'brief'),
   topics: C.cleanTopics(get('topics', null) || []),
+  period: C.cleanPeriod(get('period', 'all')),
   set: Object.assign({ theme: null, quiet: false }, get('settings', {})),
   since: get('seenAt', null),
   stars: get('stars', {}),
@@ -484,8 +465,9 @@ const P = {
   filterOff: 'M14.76 12 20 5.3A1 1 0 0 0 19.21 4H6.76zM2.81 2.81 1.39 4.22 10 13v6a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2.17l5.78 5.78 1.41-1.41z',
 };
 const icon = (k, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[k]}"/></svg>`;
-const LOGO = '<svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="128" fill="#0B57D0"/><path d="M190 132c-44 32-70 76-70 124s26 92 70 124M322 132c44 32 70 76 70 124s-26 92-70 124" fill="none" stroke="#fff" stroke-width="36" stroke-linecap="round"/><circle cx="256" cy="256" r="38" fill="#F2C063"/></svg>';
+const LOGO = '<img class="logo" src="logo.png" alt="" width="88" height="56">';
 const WM = `<span class="wm">${NAME}</span>`;
+const WM_G = '<span class="wm-g">doGet<span class="par">(</span><span class="g1">n</span><span class="g2">e</span><span class="g3">w</span><span class="g4">s</span><span class="par">)</span></span>';
 
 function attrs(url) { const h = C.extHref(url, ctx); return `href="${esc(h)}"${C.isIntent(h) ? '' : ' target="_blank" rel="noopener"'}`; }
 // An icon button that opens a page outside the app
@@ -553,7 +535,7 @@ function loadArchive() {
     } catch { if (S.brief === b) S.arch = 'failed'; }
     archP = null;
     if (S.brief !== b) return;
-    renderHero(); renderBar(); renderList(); renderTail(); reveal();
+    renderPeriod(); renderHero(); renderBar(); renderList(); renderTail(); reveal();
     refreshTopicsSheet();
   })();
   return archP;
@@ -561,18 +543,23 @@ function loadArchive() {
 
 /* ---------- Choosing what to show ---------- */
 const searchingNow = () => S.searching && !!S.q.trim();
-// Search looks across every topic; otherwise the chosen topics apply
+// Search looks across every topic and every day; otherwise the chosen topics and period apply
+const range = () => C.periodRange(S.period, now());
 function briefList(withSearch) {
   if (!S.brief) return [];
   const q = withSearch && searchingNow();
-  return C.filter(S.brief.items, { topics: q ? null : S.topics, quiet: S.set.quiet, q: q ? S.q : '', onlyNew: q ? false : S.onlyNew, since: S.since, srcName: S.brief.srcName });
+  return C.filter(S.brief.items, { topics: q ? null : S.topics, range: q ? null : range(), quiet: S.set.quiet, q: q ? S.q : '', onlyNew: q ? false : S.onlyNew, since: S.since, srcName: S.brief.srcName });
 }
-function mediaList() {
+// Videos and articles for the chosen topics, any day
+function mediaAll() {
   if (!S.brief) return [];
-  const q = searchingNow();
   const v = Object.values(S.brief.videos).map((x) => Object.assign({ kind: 'video' }, x));
   const a = Object.values(S.brief.articles).map((x) => Object.assign({ kind: 'article' }, x));
-  return v.concat(a).filter((x) => (q ? C.matches(x, S.q) : C.inTopics(x, S.topics))).sort((x, y) => y.d - x.d);
+  return v.concat(a).sort((x, y) => y.d - x.d);
+}
+function mediaList() {
+  const q = searchingNow(), r = range();
+  return mediaAll().filter((x) => (q ? C.matches(x, S.q) : C.inTopics(x, S.topics) && C.inRange(x, r)));
 }
 function starList() {
   return Object.values(S.stars).filter((x) => C.matches(x, S.q, S.brief && S.brief.srcName)).sort((a, b) => b.d - a.d);
@@ -632,20 +619,36 @@ function renderNotices() {
   $('#notices').innerHTML = out.join('');
 }
 
-// Thirteen weekly bars: the last three months, this week in amber
-let stripVals = [];
-function stripHtml(list) {
-  const end = Math.max(now(), S.brief.generated || 0);
-  const w = C.weeks(list, end, 13);
-  const max = Math.max(1, ...w.map((c) => c.n));
-  const label = 'Updates per week over the last three months: ' + w.map((c) => `week of ${C.shortDate(c.from + 864e5)} ${c.n}`).join(', ');
-  const vals = w.map((c) => c.n);
-  const html = `<div class="strip" role="img" aria-label="${esc(label)}">${w.map((c, i) =>
-    `<span class="${i === w.length - 1 ? 'now' : ''}${c.n ? '' : ' zero'}${vals[i] !== stripVals[i] ? ' grow' : ''}" style="height:${Math.max(8, Math.round(100 * c.n / max))}%;--i:${i}"></span>`).join('')}</div>
-    <div class="strip-key num"><span>${esc(C.shortDate(w[0].from + 864e5))}</span><span>This week</span></div>`;
-  stripVals = vals;
-  return html;
+// Today, Yesterday, This week, This month, All: built once, then updated in place so the fill can glide
+function renderPeriod() {
+  const el = $('#period');
+  if (!S.brief || S.view === 'stars' || searchingNow()) { el.hidden = true; return; }
+  el.hidden = false;
+  if (!el.children.length) {
+    el.innerHTML = `<span class="seg-ind" aria-hidden="true"></span>` + C.PERIODS.map((p) =>
+      `<button class="seg" type="button" role="radio" data-period="${p.id}"><span class="n num"></span><span class="l">${esc(p.n)}</span></button>`).join('');
+  }
+  const base = S.view === 'watch' ? mediaAll().filter((x) => C.inTopics(x, S.topics))
+    : C.filter(S.brief.items, { topics: S.topics, quiet: S.set.quiet, onlyNew: S.onlyNew, since: S.since });
+  const counts = C.periodCounts(base, now());
+  const what = S.view === 'watch' ? ['video or article', 'videos and articles'] : ['update', 'updates'];
+  C.PERIODS.forEach((p, i) => {
+    const b = el.querySelector(`[data-period="${p.id}"]`), on = S.period === p.id;
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+    b.querySelector('.n').textContent = counts[p.id].toLocaleString('en-GB');
+    b.setAttribute('aria-label', `${p.n}: ${C.plural(counts[p.id], what[0], what[1])}`);
+    if (on) el.style.setProperty('--sel', i);
+  });
 }
+function setPeriod(id) {
+  if (id === S.period) return;
+  S.period = C.cleanPeriod(id); put('period', S.period);
+  S.open = null; S.days = DAYS_STEP;
+  freshView();
+  render();
+}
+const periodWord = () => C.PERIODS.find((p) => p.id === S.period).from;
 
 let heroId = null;
 function renderHero() {
@@ -667,19 +670,23 @@ function renderHero() {
   }
   const list = briefList(false);
   const it = C.topPick(list, S.brief);
-  const strip = stripHtml(C.filter(S.brief.items, { topics: S.topics, quiet: S.set.quiet }));
   if (!it) {
-    el.innerHTML = strip + `<h1 class="empty-title">${S.topics.length ? 'Nothing for these topics yet' : 'Nothing in the last three months'}</h1>
-      <p class="empty-body">${S.onlyNew ? 'Nothing new since your last visit.' : S.topics.length ? 'Add another topic, or clear them to see everything.' : 'The next brief lands at about 7am UK time.'}</p>
-      ${S.topics.length ? `<div class="acts"><button class="ib sl tonal" type="button" data-act="topics" aria-label="Choose topics" title="Choose topics">${icon('filter')}</button><span class="hint">Choose topics</span></div>` : ''}`;
+    const when = { today: 'today yet', yesterday: 'from yesterday', week: 'this week yet', month: 'this month yet', all: 'in the last three months' }[S.period];
+    const tip = S.onlyNew ? 'Nothing new since your last visit.'
+      : S.period !== 'all' ? 'Try a longer stretch, like This week or All.'
+      : S.topics.length ? 'Add another topic, or clear them to see everything.' : 'The next brief lands at about 7am UK time.';
+    el.innerHTML = `<h1 class="empty-title">Nothing ${S.topics.length ? 'for these topics ' : ''}${esc(when)}</h1>
+      <p class="empty-body">${esc(tip)}</p>
+      ${S.topics.length && S.period === 'all' ? `<div class="acts"><button class="ib sl tonal" type="button" data-act="topics" aria-label="Choose topics" title="Choose topics">${icon('filter')}</button><span class="hint">Choose topics</span></div>` : ''}`;
     return;
   }
   heroId = it.id;
   const fromLatest = !S.brief.firstRun && it.a >= S.brief.latestRun - 3600e3;
-  const eyebrow = fromLatest && C.dayKey(S.brief.latestRun) === C.dayKey(now()) ? 'Top of today’s brief' : 'Top of the brief';
+  const eyebrow = { today: 'Top of today', yesterday: 'Top of yesterday', week: 'Top of the week', month: 'Top of the month' }[S.period]
+    || (fromLatest && C.dayKey(S.brief.latestRun) === C.dayKey(now()) ? 'Top of today’s brief' : 'Top of the brief');
   const nv = (it.v || []).filter((id) => S.brief.videos[id]).length, na = (it.ar || []).filter((id) => S.brief.articles[id]).length;
   const extra = [nv ? C.plural(nv, 'video', 'videos') : '', na ? C.plural(na, 'article', 'articles') : ''].filter(Boolean).join(' and ').replace(/(\d) /g, '$1 ');
-  el.innerHTML = strip + `
+  el.innerHTML = `
     <p class="eyebrow">${esc(eyebrow)}</p>
     <div class="title-row"><div><div class="meta">${metaHtml(it)}</div><h1 class="h-title">${esc(it.t)}</h1></div>${starBtn(it)}</div>
     ${it.s ? `<p class="story">${esc(it.s)}</p>` : ''}
@@ -753,7 +760,7 @@ function renderList() {
 function renderWatch(el) {
   const list = mediaList();
   if (!list.length) {
-    el.innerHTML = `<p class="empty">${searchingNow() ? `No videos or articles match “${esc(S.q.trim())}”.` : S.topics.length ? 'No videos or articles for these topics yet.' : 'No videos or articles yet.'}</p>`;
+    el.innerHTML = `<p class="empty">${searchingNow() ? `No videos or articles match “${esc(S.q.trim())}”.` : `No videos or articles ${S.topics.length ? 'for these topics ' : ''}from ${esc(periodWord())} yet.`}</p>`;
     return;
   }
   const days = C.group(list, now());
@@ -782,7 +789,10 @@ function renderTail() {
     tailIO.unobserve(el);
     requestAnimationFrame(() => tailIO.observe(el));   // observing again reports straight away if it's still on screen
   };
-  const pending = S.arch === 'idle' || S.arch === 'loading';
+  // A period that starts inside the last two weeks is all in brief.json, so it needs nothing older
+  const r = searchingNow() ? null : range();
+  const needsOlder = !r || !S.brief || r.from < S.brief.generated - S.brief.keepDays * 864e5;
+  const pending = needsOlder && (S.arch === 'idle' || S.arch === 'loading');
   if (!S.brief || S.view === 'stars' || (!S.dayTotal && !pending)) { el.innerHTML = ''; return; }
   if (S.days < S.dayTotal) {
     el.classList.add('more');
@@ -795,8 +805,12 @@ function renderTail() {
     if (S.arch === 'idle') loadArchive();
     return;
   }
-  if (S.arch === 'failed') {
+  if (S.arch === 'failed' && needsOlder) {
     el.innerHTML = `<p>Couldn’t load the older updates.</p><button class="ib sl" type="button" data-act="archive" aria-label="Try again" title="Try again">${icon('refresh')}</button>`;
+    return;
+  }
+  if (r) {
+    el.innerHTML = `<p>That’s everything from ${esc(periodWord())}.</p>`;
     return;
   }
   const items = S.brief.items;
@@ -831,6 +845,7 @@ function renderFoot() {
 
 function render() {
   renderNotices();
+  renderPeriod();
   renderHero();
   renderBar();
   renderList();
@@ -885,10 +900,7 @@ addEventListener('scroll', () => {
   requestAnimationFrame(() => {
     ticking = false;
     const y = scrollY, dy = y - lastY;
-    if (!reduced() && y < 700) {   // the clouds drift a little slower than the page
-      $('#sky').style.transform = `translateY(${(y * 0.35).toFixed(1)}px)`;
-      $('#pageSky').style.transform = `translateY(${(y * 0.4).toFixed(1)}px)`;
-    }
+    if (!reduced() && y < 700) $('#sky').style.transform = `translateY(${(y * 0.35).toFixed(1)}px)`;   // the clouds drift a little slower than the page
     $('#toTop').classList.toggle('show', y > innerHeight * 0.8);
     if (y < 40) { setPill(true); lastY = y; return; }
     if (Math.abs(dy) < 8) return;
@@ -920,8 +932,8 @@ const head = (title) => `<div class="sheet-head"><h2 id="sheetTitle">${title}</h
 
 function openWelcome() {
   S.welcoming = true;
-  openSheet(`<div class="sheet-sky" aria-hidden="true"><span class="sun"></span><span class="wisp w1"></span><span class="wisp w2"></span></div><div class="welcome">${LOGO}
-    <h2 id="sheetTitle">Welcome to <code>${NAME}</code></h2>
+  openSheet(`<div class="welcome">${LOGO}
+    <h2 id="sheetTitle" aria-label="Welcome to ${NAME}">Welcome to <code>${WM_G}</code></h2>
     <p class="lede">Welcome, fellow Google developers. It’s free for the whole community.</p>
     <p>Google Workspace, Google Cloud and GenAI move at a pace that’s hard to keep up with. ${WM} is my attempt to bring it all into one calm daily brief: what Google released, with links to Google’s own notes, docs, videos and tutorials.</p>
     <p>It runs on the lightest stack I could find. A single Apps Script call once a day writes the brief, and GitHub Pages serves it. No accounts, no tracking, nothing to pay.</p>
@@ -1117,6 +1129,7 @@ document.addEventListener('click', (e) => {
     render();
     return;
   }
+  if (d.period) { setPeriod(d.period); return; }
   if (d.topic) {
     const on = S.topics.indexOf(d.topic) >= 0;
     setTopics(on ? S.topics.filter((x) => x !== d.topic) : S.topics.concat([d.topic]));
@@ -1164,6 +1177,15 @@ $('#searchClose').addEventListener('click', () => closeSearch());
 // A thumbnail that can't load leaves a plain tile
 document.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.target.remove(); }, true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.searching && !sheet.open) closeSearch(); });
+$('#period').addEventListener('keydown', (e) => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const i = C.PERIODS.findIndex((p) => p.id === S.period);
+  const next = C.PERIODS[(i + step + C.PERIODS.length) % C.PERIODS.length].id;
+  setPeriod(next);
+  $(`#period [data-period="${next}"]`).focus();
+});
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installEvt = e; renderNotices(); });
 window.addEventListener('online', () => load());
 window.addEventListener('offline', renderNotices);

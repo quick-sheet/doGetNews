@@ -2,7 +2,7 @@
 
 What’s new across Google, once a day.
 
-A calm daily brief for Google developers, in Material 3 with light and dark themes: Google Cloud, Workspace, Apps Script and AppSheet release notes, the Gemini API and Antigravity changelogs, Firebase and Google's own blogs, tagged by stage (new model, GA, preview, deprecated, breaking). Follow any of 13 topics (GCP, GWS, Google Apps, Gemini Enterprise, Google AI Studio, Gemini & AI, Google Antigravity, Apps Script, AppSheet, Firebase, Firestore, BigQuery, Dev tools) and scroll back through three months. Each update links to Google's own page and docs, with matching videos from Google's YouTube channels and articles from the Google Cloud Community on Medium.
+A calm daily brief for Google developers, in Material 3 with light and dark themes: Google Cloud, Workspace, Apps Script and AppSheet release notes, the Gemini API and Antigravity changelogs, Firebase and Google's own blogs, tagged by stage (new model, GA, preview, deprecated, breaking). Choose Today, Yesterday, This week, This month or All. Follow any of 13 topics (GCP, GWS, Google Apps, Gemini Enterprise, Google AI Studio, Gemini & AI, Google Antigravity, Apps Script, AppSheet, Firebase, Firestore, BigQuery, Dev tools) and scroll back through three months. Each update links to Google's own page and docs, with matching videos from Google's YouTube channels and articles from the Google Cloud Community on Medium.
 
 Live at **https://quick-sheet.github.io/doGetNews/**. Free, no accounts, no tracking. Independent and not affiliated with Google.
 
@@ -43,7 +43,8 @@ If `Code.gs` changes, paste the new version into the Apps Script editor and save
 | `index.html` | The whole app: layout, styles and script |
 | `core.js` | Topics, filtering, grouping and dates, with no page in it |
 | `sw.js` | Works offline and picks up new releases |
-| `manifest.webmanifest`, `icon*` | Install to the home screen |
+| `manifest.webmanifest`, `icon*`, `apple-touch-icon.png` | Install to the home screen |
+| `logo.png` | The rainbow cloud in the header and welcome sheet |
 | `brief.json`, `archive.json` | Written by Apps Script every morning. Don't upload or edit them by hand |
 | `apps-script/Code.gs`, `appsscript.json` | The daily run. Pasted into Apps Script, not run from here |
 

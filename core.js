@@ -104,17 +104,29 @@
     return add.length;
   }
 
-  // Counts per week for the last n weeks, oldest first. Weeks end at `end`, so the last bar is the past seven days.
-  function weeks(list, end, n) {
-    n = n || 13;
-    const out = [];
-    for (let i = n - 1; i >= 0; i--) out.push({ from: end - (i + 1) * 7 * DAY, to: end - i * 7 * DAY, n: 0 });
-    list.forEach((x) => {
-      const i = Math.floor((end - x.d) / (7 * DAY));
-      if (i >= 0 && i < n) out[n - 1 - i].n++;
-    });
+  // When: Today, Yesterday, This week (from Monday), This month (from the 1st), All. Days are the phone's own.
+  const PERIODS = [
+    { id: 'today', n: 'Today', from: 'today' }, { id: 'yesterday', n: 'Yesterday', from: 'yesterday' },
+    { id: 'week', n: 'This week', from: 'this week' }, { id: 'month', n: 'This month', from: 'this month' }, { id: 'all', n: 'All', from: 'the last three months' },
+  ];
+  // { from, to } in ms for a period, or null for All
+  function periodRange(id, now) {
+    const d = new Date(now), y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+    const start = new Date(y, m, day).getTime();
+    if (id === 'today') return { from: start, to: Infinity };
+    if (id === 'yesterday') return { from: new Date(y, m, day - 1).getTime(), to: start };
+    if (id === 'week') return { from: new Date(y, m, day - (d.getDay() + 6) % 7).getTime(), to: Infinity };
+    if (id === 'month') return { from: new Date(y, m, 1).getTime(), to: Infinity };
+    return null;
+  }
+  const inRange = (it, r) => !r || (it.d >= r.from && it.d < r.to);
+  function periodCounts(items, now) {
+    const out = {};
+    PERIODS.forEach((p) => { const r = periodRange(p.id, now); out[p.id] = items.filter((it) => inRange(it, r)).length; });
     return out;
   }
+  const cleanPeriod = (id) => (PERIODS.some((p) => p.id === id) ? id : 'all');
+
 
   /* ---------- Dates ---------- */
   const dayKey = (ms) => { const d = new Date(ms); return d.getFullYear() * 1e4 + (d.getMonth() + 1) * 100 + d.getDate(); };
@@ -162,11 +174,12 @@
     const h = haystack(it, srcName);
     return w.every((x) => h.indexOf(x) >= 0);
   }
-  // f: { topics: ['gcp'], track, hidden: { ws: true }, quiet, q, onlyNew, since, srcName }
+  // f: { topics: ['gcp'], range: periodRange(...), track, hidden: { ws: true }, quiet, q, onlyNew, since, srcName }
   function filter(items, f) {
     f = f || {};
     return items.filter((it) => {
       if (f.topics && !inTopics(it, f.topics)) return false;
+      if (f.range && !inRange(it, f.range)) return false;
       if (f.track && f.track !== 'all' && it.tr !== f.track) return false;
       if ((!f.track || f.track === 'all') && f.hidden && f.hidden[it.tr]) return false;
       if (f.quiet && it.src === 'gcp' && !it.st) return false;
@@ -242,7 +255,8 @@
   const thumb = (id) => 'https://i.ytimg.com/vi/' + encodeURIComponent(id) + '/mqdefault.jpg';
 
   const Core = {
-    TRACKS, TRACK_NAME, STAGES, TOPICS, TOPIC, TOPIC_GROUPS, FROM_TRACK, inTopic, inTopics, topicCounts, cleanTopics, mergeArchive, weeks,
+    TRACKS, TRACK_NAME, STAGES, TOPICS, TOPIC, TOPIC_GROUPS, FROM_TRACK, inTopic, inTopics, topicCounts, cleanTopics, mergeArchive,
+    PERIODS, periodRange, inRange, periodCounts, cleanPeriod,
     prepare, dayKey, dayLabel, longDate, shortDate, time, ago, updatedTxt, isStale,
     matches, filter, isNew, newCount, group, topPick, stats, statsTxt, plural, readLabel, extHref, isIntent, hostOf, thumb,
   };
