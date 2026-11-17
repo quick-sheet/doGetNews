@@ -10,15 +10,63 @@
     { id: 'ai', n: 'AI' },
     { id: 'dev', n: 'Dev tools' },
   ];
-  const TRACK_NAME = { ws: 'Workspace', cloud: 'Cloud', ai: 'AI', dev: 'Dev tools' };
+  const TRACK_NAME = { ws: 'GWS', cloud: 'GCP', ai: 'AI', dev: 'Dev tools' };
+  const TRACK_WORDS = { ws: 'GWS Google Workspace', cloud: 'GCP Google Cloud', ai: 'AI', dev: 'Dev tools developer' };
+
+  // Topics to follow. An update belongs to a topic by its track, its source, or one of its products.
+  // Choosing none means everything.
+  const GOOGLE_APPS = ['Gmail', 'Google Drive', 'Google Docs', 'Google Sheets', 'Google Slides', 'Google Meet', 'Google Chat',
+    'Google Calendar', 'Google Forms', 'Google Vids', 'Google Keep', 'Google Sites', 'Google Classroom', 'Gemini in Workspace'];
+  const TOPICS = [
+    { id: 'gcp', n: 'GCP', g: 'Platforms', tr: 'cloud', src: ['gcp', 'cloudblog'] },
+    { id: 'gws', n: 'GWS', g: 'Platforms', tr: 'ws', src: ['ws', 'kwws', 'wsdev'] },
+    { id: 'apps', n: 'Google Apps', g: 'Platforms', p: GOOGLE_APPS },
+    { id: 'gemx', n: 'Gemini Enterprise', g: 'AI', p: ['Agent Platform', 'Gemini Enterprise'] },
+    { id: 'aistudio', n: 'Google AI Studio', g: 'AI', p: ['Google AI Studio', 'Gemini API'] },
+    { id: 'ai', n: 'Gemini & AI', g: 'AI', tr: 'ai' },
+    { id: 'antigravity', n: 'Google Antigravity', g: 'Build', p: ['Google Antigravity'] },
+    { id: 'appsscript', n: 'Apps Script', g: 'Build', p: ['Apps Script'] },
+    { id: 'appsheet', n: 'AppSheet', g: 'Build', p: ['AppSheet'] },
+    { id: 'firebase', n: 'Firebase', g: 'Build', p: ['Firebase', 'Firebase Studio', 'Genkit'] },
+    { id: 'firestore', n: 'Firestore', g: 'Build', p: ['Firestore'] },
+    { id: 'bigquery', n: 'BigQuery', g: 'Build', p: ['BigQuery'] },
+    { id: 'dev', n: 'Dev tools', g: 'Build', tr: 'dev' },
+  ];
+  const TOPIC = {};
+  TOPICS.forEach((t) => { TOPIC[t.id] = t; });
+  const TOPIC_GROUPS = ['Platforms', 'AI', 'Build'];
+  // v1 tracks become the matching topic
+  const FROM_TRACK = { ws: 'gws', cloud: 'gcp', ai: 'ai', dev: 'dev' };
+
+  function inTopic(it, t) {
+    if (!t) return false;
+    if (t.tr && it.tr === t.tr) return true;
+    if (t.src && t.src.indexOf(it.src) >= 0) return true;
+    return !!t.p && (it.p || []).some((n) => t.p.indexOf(n) >= 0);
+  }
+  // sel: topic ids; none chosen means all
+  function inTopics(it, sel) {
+    if (!sel || !sel.length) return true;
+    return sel.some((id) => inTopic(it, TOPIC[id]));
+  }
+  function topicCounts(items) {
+    const out = {};
+    TOPICS.forEach((t) => { out[t.id] = 0; });
+    items.forEach((it) => TOPICS.forEach((t) => { if (inTopic(it, t)) out[t.id]++; }));
+    return out;
+  }
+  const cleanTopics = (sel) => (Array.isArray(sel) ? sel.filter((id, i) => TOPIC[id] && sel.indexOf(id) === i) : []);
   const STAGES = { model: 'New model', ga: 'GA', preview: 'Preview', deprecated: 'Deprecated', breaking: 'Breaking change' };
-  const READ = { gcp: 'Read the release note', gemapi: 'Read the release note', ws: 'Read the update' };
+  const READ = { gcp: 'Read the release note', gemapi: 'Read the release note', asnotes: 'Read the release note', wsdev: 'Read the release note',
+    antigravity: 'Read the changelog', appsheet: 'Read the release note', ws: 'Read the update' };
+
+  const ok = (x) => x && typeof x.id === 'string' && typeof x.t === 'string' && typeof x.u === 'string' && /^https:\/\//.test(x.u) && isFinite(x.d);
+  const tidy = (x) => Object.assign({ s: '', p: [], st: '', r: 10, a: x.d, tr: 'cloud' }, x);
 
   // Checks and tidies a brief.json. Returns null when it isn't one.
   function prepare(raw) {
     if (!raw || raw.v !== 1 || !Array.isArray(raw.items)) return null;
-    const ok = (x) => x && typeof x.id === 'string' && typeof x.t === 'string' && typeof x.u === 'string' && /^https:\/\//.test(x.u) && isFinite(x.d);
-    const items = raw.items.filter(ok).map((x) => Object.assign({ s: '', p: [], st: '', r: 10, a: x.d, tr: 'cloud' }, x));
+    const items = raw.items.filter(ok).map(tidy);
     items.sort((a, b) => b.d - a.d || b.r - a.r);
     const videos = {}, articles = {};
     (raw.videos || []).filter(ok).forEach((v) => { videos[v.id] = v; });
@@ -28,13 +76,44 @@
     const sources = Array.isArray(raw.sources) ? raw.sources : [];
     const srcName = {};
     sources.forEach((s) => { srcName[s.id] = s.n; });
+    const arch = raw.archive && typeof raw.archive.file === 'string' && /^[\w.-]+\.json$/.test(raw.archive.file) ? raw.archive : null;
     return {
       generated: +raw.generated || maxA || 0,
       keepDays: raw.keepDays || 14,
+      historyDays: raw.historyDays || raw.keepDays || 14,
+      archive: arch ? { file: arch.file, items: +arch.items || 0, loaded: false } : null,
       items, videos, articles, sources, srcName,
       firstRun: !items.length || maxA - minA < H,   // everything arrived in one run
       latestRun: maxA,
     };
+  }
+
+  // Adds archive.json (the older part of the three months) to a prepared brief. An archive from a day
+  // either side is fine (the two files are saved moments apart, and an update is only ever kept once);
+  // an older one is left out. Returns how many updates it added, or -1 when it isn't an archive.
+  function mergeArchive(b, raw) {
+    if (!b || !raw || raw.v !== 1 || !Array.isArray(raw.items)) return -1;
+    if (b.generated && raw.generated && Math.abs(+raw.generated - b.generated) > 3 * DAY) return -1;
+    const have = {};
+    b.items.forEach((x) => { have[x.id] = 1; });
+    const add = raw.items.filter((x) => ok(x) && !have[x.id]).map(tidy);
+    b.items = b.items.concat(add).sort((x, y) => y.d - x.d || y.r - x.r);
+    (raw.videos || []).filter(ok).forEach((v) => { if (!b.videos[v.id]) b.videos[v.id] = v; });
+    (raw.articles || []).filter(ok).forEach((v) => { if (!b.articles[v.id]) b.articles[v.id] = v; });
+    if (b.archive) b.archive.loaded = true;
+    return add.length;
+  }
+
+  // Counts per week for the last n weeks, oldest first. Weeks end at `end`, so the last bar is the past seven days.
+  function weeks(list, end, n) {
+    n = n || 13;
+    const out = [];
+    for (let i = n - 1; i >= 0; i--) out.push({ from: end - (i + 1) * 7 * DAY, to: end - i * 7 * DAY, n: 0 });
+    list.forEach((x) => {
+      const i = Math.floor((end - x.d) / (7 * DAY));
+      if (i >= 0 && i < n) out[n - 1 - i].n++;
+    });
+    return out;
   }
 
   /* ---------- Dates ---------- */
@@ -75,7 +154,7 @@
   /* ---------- Choosing what to show ---------- */
   function words(q) { return String(q || '').toLowerCase().split(/\s+/).filter(Boolean); }
   function haystack(it, srcName) {
-    return [it.t, it.s, (it.p || []).join(' '), it.g || '', TRACK_NAME[it.tr] || '', STAGES[it.st] || '', (srcName && srcName[it.src]) || '', it.ch || '', it.by || ''].join(' ').toLowerCase();
+    return [it.t, it.s, (it.p || []).join(' '), it.g || '', TRACK_WORDS[it.tr] || '', STAGES[it.st] || '', (srcName && srcName[it.src]) || '', it.ch || '', it.by || ''].join(' ').toLowerCase();
   }
   function matches(it, q, srcName) {
     const w = words(q);
@@ -83,10 +162,11 @@
     const h = haystack(it, srcName);
     return w.every((x) => h.indexOf(x) >= 0);
   }
-  // f: { track, hidden: { ws: true }, quiet, q, onlyNew, since, srcName }
+  // f: { topics: ['gcp'], track, hidden: { ws: true }, quiet, q, onlyNew, since, srcName }
   function filter(items, f) {
     f = f || {};
     return items.filter((it) => {
+      if (f.topics && !inTopics(it, f.topics)) return false;
       if (f.track && f.track !== 'all' && it.tr !== f.track) return false;
       if ((!f.track || f.track === 'all') && f.hidden && f.hidden[it.tr]) return false;
       if (f.quiet && it.src === 'gcp' && !it.st) return false;
@@ -162,7 +242,8 @@
   const thumb = (id) => 'https://i.ytimg.com/vi/' + encodeURIComponent(id) + '/mqdefault.jpg';
 
   const Core = {
-    TRACKS, TRACK_NAME, STAGES, prepare, dayKey, dayLabel, longDate, shortDate, time, ago, updatedTxt, isStale,
+    TRACKS, TRACK_NAME, STAGES, TOPICS, TOPIC, TOPIC_GROUPS, FROM_TRACK, inTopic, inTopics, topicCounts, cleanTopics, mergeArchive, weeks,
+    prepare, dayKey, dayLabel, longDate, shortDate, time, ago, updatedTxt, isStale,
     matches, filter, isNew, newCount, group, topPick, stats, statsTxt, plural, readLabel, extHref, isIntent, hostOf, thumb,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Core;

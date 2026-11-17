@@ -2,15 +2,15 @@
 
 What’s new across Google, once a day.
 
-A calm daily brief for Google developers, in Material 3 with light and dark themes: Google Cloud release notes, Google Workspace Updates, the Gemini API changelog and Google's own blogs, tagged by track (Workspace, Cloud, AI, Dev tools) and stage (new model, GA, preview, deprecated, breaking). Each update links to Google's own page and docs, with matching videos from Google's YouTube channels and articles from the Google Cloud Community on Medium.
+A calm daily brief for Google developers, in Material 3 with light and dark themes: Google Cloud, Workspace, Apps Script and AppSheet release notes, the Gemini API and Antigravity changelogs, Firebase and Google's own blogs, tagged by stage (new model, GA, preview, deprecated, breaking). Follow any of 13 topics (GCP, GWS, Google Apps, Gemini Enterprise, Google AI Studio, Gemini & AI, Google Antigravity, Apps Script, AppSheet, Firebase, Firestore, BigQuery, Dev tools) and scroll back through three months. Each update links to Google's own page and docs, with matching videos from Google's YouTube channels and articles from the Google Cloud Community on Medium.
 
 Live at **https://quick-sheet.github.io/doGetNews/**. Free, no accounts, no tracking. Independent and not affiliated with Google.
 
 ## How it works
 
-- **Once a day**, between 7 and 8am UK time, an Apps Script time trigger reads the sources, builds `brief.json` and saves it into this repo through GitHub's API.
-- **The app** is static files on GitHub Pages. It only ever reads `brief.json`, so however many people use it, it costs one Apps Script run a day. There is no web app and no refresh button that could call the script.
-- Updates stay for two weeks; videos and articles for a month. A source that fails one day keeps its earlier updates.
+- **Once a day**, between 7 and 8am UK time, an Apps Script time trigger reads the sources and saves two files into this repo through GitHub's API: `brief.json` (the last two weeks) and `archive.json` (the rest of the three months).
+- **The app** is static files on GitHub Pages. It opens on `brief.json` and loads `archive.json` in the background, so however many people use it, it costs one Apps Script run a day. There is no web app and no refresh button that could call the script.
+- Updates, videos and articles stay for three months. A source that fails one day keeps its earlier updates. Feeds only hold their recent posts, so the history fills in a day at a time.
 
 ## Set up (once)
 
@@ -41,10 +41,10 @@ If `Code.gs` changes, paste the new version into the Apps Script editor and save
 | File | What it does |
 | --- | --- |
 | `index.html` | The whole app: layout, styles and script |
-| `core.js` | Filtering, grouping and dates, with no page in it |
+| `core.js` | Topics, filtering, grouping and dates, with no page in it |
 | `sw.js` | Works offline and picks up new releases |
 | `manifest.webmanifest`, `icon*` | Install to the home screen |
-| `brief.json` | Written by Apps Script every morning. Don't upload or edit it by hand |
+| `brief.json`, `archive.json` | Written by Apps Script every morning. Don't upload or edit them by hand |
 | `apps-script/Code.gs`, `appsscript.json` | The daily run. Pasted into Apps Script, not run from here |
 
 ## Good to know
