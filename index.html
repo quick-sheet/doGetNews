@@ -172,20 +172,30 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .notice { display: flex; gap: 8px; align-items: center; margin: 4px 0 12px; padding: 8px 4px 8px 16px; border-radius: 16px; background: var(--card-2); font-size: 14px; line-height: 20px; color: var(--on-var); }
 .notice p { margin: 0; flex: 1; }
 
-/* When: Today, Yesterday, This week, This month, This quarter. Each shows how many updates it holds, and the
-   chosen one is marked by a fill that glides across. */
-.period { position: relative; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 1.2fr); padding: 4px; margin: 12px 0 0; border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1px var(--outline-var); }
+/* When: Today, Yesterday, This week, This month, This quarter. A soft raised surface; the chosen one sits
+   on a tonal blue thumb that glides (with a touch of spring) and carries a small Google-colour stripe,
+   echoing "news" in the name. Numbers count to their new value when they change. */
+.period { position: relative; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 1.2fr); padding: 5px; margin: 12px 0 0; border-radius: 26px; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, .04), 0 12px 28px -18px rgba(0, 0, 0, .3); }
+:root[data-theme="dark"] .period { box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgba(0, 0, 0, .8); }
 .period[hidden] { display: none; }
-.seg-ind { position: absolute; top: 4px; bottom: 4px; left: 0; width: var(--w, 0); border-radius: 16px; background: var(--secondary-c); transform: translateX(var(--x, 0)); transition: transform .45s var(--glide), width .45s var(--glide); }
-.seg { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 60px; padding: 8px 2px; border-radius: 16px; color: var(--on-var); transition: color .2s; }
-.seg .n { font-size: 20px; line-height: 24px; font-weight: 500; color: var(--on); transition: color .2s; }
+.seg-ind { position: absolute; top: 5px; bottom: 5px; left: 0; width: var(--w, 0); border-radius: 21px;
+  background: linear-gradient(140deg, var(--primary-c), var(--secondary-c));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 3px 10px -4px rgba(11, 87, 208, .45);
+  transform: translateX(var(--x, 0)); transition: transform .5s cubic-bezier(.3, 1.25, .5, 1), width .45s var(--glide); }
+:root[data-theme="dark"] .seg-ind { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 3px 10px -4px rgba(0, 0, 0, .7); }
+.seg-ind::after { content: ""; position: absolute; left: 50%; bottom: 8px; width: 20px; height: 3px; margin-left: -10px; border-radius: 2px;
+  background: linear-gradient(90deg, #4285F4 0 25%, #EA4335 25% 50%, #FBBC05 50% 75%, #34A853 75%); }
+.seg { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 70px; padding: 6px 2px 14px; border-radius: 21px; color: var(--on-var); transition: color .25s, transform .15s var(--ease); }
+.seg .n { font-size: 22px; line-height: 26px; font-weight: 500; letter-spacing: -.01em; color: var(--on); transition: color .25s; }
 .seg .l { font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; }
 .seg[aria-checked="true"], .seg[aria-checked="true"] .n { color: var(--on-secondary-c); }
-.seg:active { background: color-mix(in srgb, currentColor 10%, transparent); }
-@media (max-width: 370px) { .seg .l { font-size: 11px; } .seg .n { font-size: 18px; } }
+.seg:active { transform: scale(.95); }
+@media (hover: hover) { .seg:not([aria-checked="true"]):hover .n { color: var(--primary); } }
+@media (max-width: 370px) { .seg .l { font-size: 11px; } .seg .n { font-size: 19px; } }
 
 /* Hero card, with a little weather of its own: clouds drifting across the top */
-.hero { position: relative; overflow: hidden; isolation: isolate; background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 55%, var(--card)) 0, var(--card) 150px); border-radius: 28px; margin: 12px 0 16px; }
+.hero { position: relative; overflow: hidden; isolation: isolate; background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 55%, var(--card)) 0, var(--card) 150px); border-radius: 28px; margin: 14px 0 16px; }
 :root[data-theme="dark"] .hero { background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 38%, var(--card)) 0, var(--card) 150px); }
 .hero[hidden] { display: none; }
 .hero-in { position: relative; z-index: 1; padding: 18px 16px 12px 20px; }
@@ -223,7 +233,7 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .new-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tertiary); flex: none; }
 
 /* Topics and "New only": one row under the hero, no sideways scrolling */
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; }
 .tbtn { height: 40px; padding: 0 16px 0 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--on-var); box-shadow: inset 0 0 0 1px var(--outline-var); }
 .tbtn svg.i { width: 18px; height: 18px; }
 .tbtn .tc { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--card-2); color: var(--on-var); font-size: 12px; line-height: 22px; text-align: center; }
@@ -385,8 +395,8 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
   <div id="notices"></div>
   <main>
     <div class="period" id="period" role="radiogroup" aria-label="Show updates from" data-rv="period" hidden></div>
-    <section class="hero" id="hero" data-rv="hero"><div class="sky" id="sky" aria-hidden="true"><span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span></div><div class="hero-in" id="heroIn" aria-live="polite"></div></section>
     <div id="bar"></div>
+    <section class="hero" id="hero" data-rv="hero"><div class="sky" id="sky" aria-hidden="true"><span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span></div><div class="hero-in" id="heroIn" aria-live="polite"></div></section>
     <div id="list"></div>
     <div class="tail" id="tail"></div>
   </main>
@@ -397,7 +407,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody" tabindex="-1"></div></dialog>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=4"></script>
+<script src="core.js?v=5"></script>
 <script>
 (() => {
 'use strict';
@@ -644,10 +654,25 @@ function renderPeriod() {
     const b = el.querySelector(`[data-period="${p.id}"]`), on = S.period === p.id;
     b.setAttribute('aria-checked', String(on));
     b.tabIndex = on ? 0 : -1;
-    b.querySelector('.n').textContent = counts[p.id].toLocaleString('en-GB');
+    countTo(b.querySelector('.n'), counts[p.id]);
     b.setAttribute('aria-label', `${p.n}: ${C.plural(counts[p.id], what[0], what[1])}`);
   });
   placeFill();
+}
+// A number counts up or down to its new value; data-n always holds the value itself
+function countTo(el, n) {
+  const from = el.dataset.n == null ? 0 : +el.dataset.n;
+  el.dataset.n = n;
+  cancelAnimationFrame(el._raf);
+  const show = (v) => { el.textContent = Math.round(v).toLocaleString('en-GB'); };
+  if (reduced() || from === n) { show(n); return; }
+  const t0 = performance.now(), dur = 650;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur);
+    show(from + (n - from) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
 }
 // The fill sits under the chosen button, measured, since the buttons differ in width
 function placeFill() {
