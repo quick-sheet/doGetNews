@@ -104,12 +104,13 @@
     return add.length;
   }
 
-  // When: Today, Yesterday, This week (from Monday), This month (from the 1st), All. Days are the phone's own.
+  // When: Today, Yesterday, This week (from Monday), This month (from the 1st), This quarter (from 1 January,
+  // April, July or October). Days are the phone's own.
   const PERIODS = [
     { id: 'today', n: 'Today', from: 'today' }, { id: 'yesterday', n: 'Yesterday', from: 'yesterday' },
-    { id: 'week', n: 'This week', from: 'this week' }, { id: 'month', n: 'This month', from: 'this month' }, { id: 'all', n: 'All', from: 'the last three months' },
+    { id: 'week', n: 'This week', from: 'this week' }, { id: 'month', n: 'This month', from: 'this month' }, { id: 'quarter', n: 'This quarter', from: 'this quarter' },
   ];
-  // { from, to } in ms for a period, or null for All
+  // { from, to } in ms for a period, or null for anything else (search looks across every day)
   function periodRange(id, now) {
     const d = new Date(now), y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
     const start = new Date(y, m, day).getTime();
@@ -117,6 +118,7 @@
     if (id === 'yesterday') return { from: new Date(y, m, day - 1).getTime(), to: start };
     if (id === 'week') return { from: new Date(y, m, day - (d.getDay() + 6) % 7).getTime(), to: Infinity };
     if (id === 'month') return { from: new Date(y, m, 1).getTime(), to: Infinity };
+    if (id === 'quarter') return { from: new Date(y, m - (m % 3), 1).getTime(), to: Infinity };
     return null;
   }
   const inRange = (it, r) => !r || (it.d >= r.from && it.d < r.to);
@@ -125,7 +127,7 @@
     PERIODS.forEach((p) => { const r = periodRange(p.id, now); out[p.id] = items.filter((it) => inRange(it, r)).length; });
     return out;
   }
-  const cleanPeriod = (id) => (PERIODS.some((p) => p.id === id) ? id : 'all');
+  const cleanPeriod = (id) => (PERIODS.some((p) => p.id === id) ? id : 'quarter');   // v3's All becomes This quarter
 
 
   /* ---------- Dates ---------- */

@@ -16,15 +16,15 @@
   })();
 </script>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png?v=4" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="doGet(news)">
 <meta property="og:title" content="doGet(news)">
 <meta property="og:description" content="What’s new across Google, once a day. Free for the Google developer community.">
-<meta property="og:image" content="https://quick-sheet.github.io/doGetNews/icon-512.png">
+<meta property="og:image" content="https://quick-sheet.github.io/doGetNews/icon-512.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..600&family=Google+Sans+Flex:wght@400..700&display=swap">
@@ -172,11 +172,11 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .notice { display: flex; gap: 8px; align-items: center; margin: 4px 0 12px; padding: 8px 4px 8px 16px; border-radius: 16px; background: var(--card-2); font-size: 14px; line-height: 20px; color: var(--on-var); }
 .notice p { margin: 0; flex: 1; }
 
-/* When: Today, Yesterday, This week, This month, All. Each shows how many updates it holds, and the
+/* When: Today, Yesterday, This week, This month, This quarter. Each shows how many updates it holds, and the
    chosen one is marked by a fill that glides across. */
-.period { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 4px; margin: 12px 0 0; border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1px var(--outline-var); }
+.period { position: relative; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 1.2fr); padding: 4px; margin: 12px 0 0; border-radius: 20px; background: var(--card); box-shadow: inset 0 0 0 1px var(--outline-var); }
 .period[hidden] { display: none; }
-.seg-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 5); border-radius: 16px; background: var(--secondary-c); transform: translateX(calc(var(--sel, 4) * 100%)); transition: transform .45s var(--glide); }
+.seg-ind { position: absolute; top: 4px; bottom: 4px; left: 0; width: var(--w, 0); border-radius: 16px; background: var(--secondary-c); transform: translateX(var(--x, 0)); transition: transform .45s var(--glide), width .45s var(--glide); }
 .seg { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 60px; padding: 8px 2px; border-radius: 16px; color: var(--on-var); transition: color .2s; }
 .seg .n { font-size: 20px; line-height: 24px; font-weight: 500; color: var(--on); transition: color .2s; }
 .seg .l { font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; }
@@ -329,6 +329,13 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 .welcome .sig a { text-underline-offset: 3px; }
 .welcome .acts { margin-top: 18px; }
 
+/* Loading: the rainbow cloud floats gently while the brief arrives */
+.loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 0 18px; }
+.loading img { height: 56px; width: auto; animation: bob 2.4s ease-in-out infinite; }
+.loading p { margin: 0; font-size: 15px; color: var(--on-var); }
+@keyframes bob { 50% { transform: translateY(-7px) scale(1.04); } }
+@keyframes breathe { 50% { opacity: .45; } }
+
 /* Spinner: a comet */
 .spinner { border-radius: 50%; background: conic-gradient(from 90deg, transparent 10%, currentColor 95%);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.2px), #000 calc(100% - 2px));
@@ -347,6 +354,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .rv { opacity: 1; transform: none; }
   .spinner { animation: spin 1.6s linear infinite !important; }
+  .loading img { animation: breathe 2.4s ease-in-out infinite !important; }   /* still, just a slow fade */
 }
 </style>
 </head>
@@ -389,7 +397,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody" tabindex="-1"></div></dialog>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=3"></script>
+<script src="core.js?v=4"></script>
 <script>
 (() => {
 'use strict';
@@ -418,7 +426,7 @@ const S = {
   brief: null, loading: true, missing: false, failed: false, saved: false, fetchedAt: 0,
   view: get('view', 'brief'),
   topics: C.cleanTopics(get('topics', null) || []),
-  period: C.cleanPeriod(get('period', 'all')),
+  period: C.cleanPeriod(get('period', 'quarter')),
   set: Object.assign({ theme: null, quiet: false }, get('settings', {})),
   since: get('seenAt', null),
   stars: get('stars', {}),
@@ -619,7 +627,7 @@ function renderNotices() {
   $('#notices').innerHTML = out.join('');
 }
 
-// Today, Yesterday, This week, This month, All: built once, then updated in place so the fill can glide
+// Today, Yesterday, This week, This month, This quarter: built once, then updated in place so the fill can glide
 function renderPeriod() {
   const el = $('#period');
   if (!S.brief || S.view === 'stars' || searchingNow()) { el.hidden = true; return; }
@@ -638,9 +646,17 @@ function renderPeriod() {
     b.tabIndex = on ? 0 : -1;
     b.querySelector('.n').textContent = counts[p.id].toLocaleString('en-GB');
     b.setAttribute('aria-label', `${p.n}: ${C.plural(counts[p.id], what[0], what[1])}`);
-    if (on) el.style.setProperty('--sel', i);
   });
+  placeFill();
 }
+// The fill sits under the chosen button, measured, since the buttons differ in width
+function placeFill() {
+  const el = $('#period'), b = el.querySelector('[aria-checked="true"]');
+  if (!b || el.hidden) return;
+  el.style.setProperty('--x', b.offsetLeft + 'px');
+  el.style.setProperty('--w', b.offsetWidth + 'px');
+}
+addEventListener('resize', placeFill);
 function setPeriod(id) {
   if (id === S.period) return;
   S.period = C.cleanPeriod(id); put('period', S.period);
@@ -656,7 +672,7 @@ function renderHero() {
   heroId = null;
   if (searchingNow() || S.view !== 'brief') { box.hidden = true; return; }
   box.hidden = false;
-  if (S.loading) { el.innerHTML = `<p class="empty-body"><span class="spinner" aria-hidden="true"></span>Getting today’s brief…</p>`; return; }
+  if (S.loading) { el.innerHTML = `<div class="loading" role="status"><img src="logo.png" alt="" width="88" height="56"><p>Getting today’s brief…</p></div>`; return; }
   if (S.missing) {
     el.innerHTML = `<h1 class="empty-title">The first brief is on its way</h1>
       <p class="empty-body">${WM} publishes a new brief once a day, at about 7am UK time. Check back after that.</p>`;
@@ -671,13 +687,13 @@ function renderHero() {
   const list = briefList(false);
   const it = C.topPick(list, S.brief);
   if (!it) {
-    const when = { today: 'today yet', yesterday: 'from yesterday', week: 'this week yet', month: 'this month yet', all: 'in the last three months' }[S.period];
+    const when = { today: 'today yet', yesterday: 'from yesterday', week: 'this week yet', month: 'this month yet', quarter: 'this quarter yet' }[S.period];
     const tip = S.onlyNew ? 'Nothing new since your last visit.'
-      : S.period !== 'all' ? 'Try a longer stretch, like This week or All.'
+      : S.period !== 'quarter' ? 'Try a longer stretch, like This week or This quarter.'
       : S.topics.length ? 'Add another topic, or clear them to see everything.' : 'The next brief lands at about 7am UK time.';
     el.innerHTML = `<h1 class="empty-title">Nothing ${S.topics.length ? 'for these topics ' : ''}${esc(when)}</h1>
       <p class="empty-body">${esc(tip)}</p>
-      ${S.topics.length && S.period === 'all' ? `<div class="acts"><button class="ib sl tonal" type="button" data-act="topics" aria-label="Choose topics" title="Choose topics">${icon('filter')}</button><span class="hint">Choose topics</span></div>` : ''}`;
+      ${S.topics.length && S.period === 'quarter' ? `<div class="acts"><button class="ib sl tonal" type="button" data-act="topics" aria-label="Choose topics" title="Choose topics">${icon('filter')}</button><span class="hint">Choose topics</span></div>` : ''}`;
     return;
   }
   heroId = it.id;
@@ -809,12 +825,14 @@ function renderTail() {
     el.innerHTML = `<p>Couldn’t load the older updates.</p><button class="ib sl" type="button" data-act="archive" aria-label="Try again" title="Try again">${icon('refresh')}</button>`;
     return;
   }
-  if (r) {
-    el.innerHTML = `<p>That’s everything from ${esc(periodWord())}.</p>`;
-    return;
-  }
   const items = S.brief.items;
   const oldest = items.length ? items[items.length - 1].d : now();
+  if (r) {
+    // History still filling in (the first weeks after setting up): say so rather than "everything"
+    const short = needsOlder && oldest > r.from + 864e5;
+    el.innerHTML = `<p>${short ? `That’s everything so far. ${NAME} keeps three months, and fills in a day at a time.` : `That’s everything from ${esc(periodWord())}.`}</p>`;
+    return;
+  }
   const full = now() - oldest > 80 * 864e5;
   const what = searchingNow() ? 'every match from the last three months' : S.view === 'watch' ? 'three months of videos and articles' : 'three months of updates';
   el.innerHTML = `<p>${full ? `That’s ${what}.` : `That’s everything so far. ${NAME} keeps three months, and fills in a day at a time.`}</p>`;

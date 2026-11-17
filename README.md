@@ -2,7 +2,7 @@
 
 What’s new across Google, once a day.
 
-A calm daily brief for Google developers, in Material 3 with light and dark themes: Google Cloud, Workspace, Apps Script and AppSheet release notes, the Gemini API and Antigravity changelogs, Firebase and Google's own blogs, tagged by stage (new model, GA, preview, deprecated, breaking). Choose Today, Yesterday, This week, This month or All. Follow any of 13 topics (GCP, GWS, Google Apps, Gemini Enterprise, Google AI Studio, Gemini & AI, Google Antigravity, Apps Script, AppSheet, Firebase, Firestore, BigQuery, Dev tools) and scroll back through three months. Each update links to Google's own page and docs, with matching videos from Google's YouTube channels and articles from the Google Cloud Community on Medium.
+A calm daily brief for Google developers, in Material 3 with light and dark themes: Google Cloud, Workspace, Apps Script and AppSheet release notes, the Gemini API and Antigravity changelogs, Firebase and Google's own blogs, tagged by stage (new model, GA, preview, deprecated, breaking). Choose Today, Yesterday, This week, This month or This quarter. Follow any of 13 topics (GCP, GWS, Google Apps, Gemini Enterprise, Google AI Studio, Gemini & AI, Google Antigravity, Apps Script, AppSheet, Firebase, Firestore, BigQuery, Dev tools) and scroll back through three months. Each update links to Google's own page and docs, with matching videos from Google's YouTube channels and articles from the Google Cloud Community on Medium.
 
 Live at **https://quick-sheet.github.io/doGetNews/**. Free, no accounts, no tracking. Independent and not affiliated with Google.
 
