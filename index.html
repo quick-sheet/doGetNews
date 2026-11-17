@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>doGet(news)</title>
+<meta name="description" content="What’s new across Google, once a day.">
+<meta name="theme-color" content="#131314">
+<script>
+  // Light or dark before anything paints: the saved choice, else the phone's own setting
+  (function () {
+    var t = null;
+    try { t = (JSON.parse(localStorage.getItem('dgn.settings') || '{}') || {}).theme; } catch (e) {}
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="doGet(news)">
+<meta property="og:title" content="doGet(news)">
+<meta property="og:description" content="What’s new across Google, once a day. Free for the Google developer community.">
+<meta property="og:image" content="https://quick-sheet.github.io/doGetNews/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..600&family=Google+Sans+Flex:wght@400..700&display=swap">
+<style>
+/* Material 3 colour roles. Light and dark only. Tertiary (amber) is our own accent for what's new. */
+:root, :root[data-theme="light"] {
+  --bg: #F0F4F9; --card: #FFFFFF; --card-2: #E9EEF6; --sheet: #F8FAFD;
+  --on: #1F1F1F; --on-var: #444746; --outline: #747775; --outline-var: #C4C7C5;
+  --primary: #0B57D0; --on-primary: #FFFFFF; --primary-c: #D3E3FD; --on-primary-c: #041E49;
+  --secondary-c: #C2E7FF; --on-secondary-c: #001D35;
+  --tertiary: #8A5D00; --tertiary-c: #FFDEA6; --on-tertiary-c: #2A1800;
+  --error-c: #FFDAD6; --on-error-c: #410002;
+  --inverse: #303030; --on-inverse: #F2F2F2; --inverse-primary: #A8C7FA;
+  --scrim: rgba(0, 0, 0, .32);
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #131314; --card: #1E1F20; --card-2: #282A2C; --sheet: #1E1F20;
+  --on: #E3E3E3; --on-var: #C4C7C5; --outline: #8E918F; --outline-var: #444746;
+  --primary: #A8C7FA; --on-primary: #062E6F; --primary-c: #0842A0; --on-primary-c: #D3E3FD;
+  --secondary-c: #004A77; --on-secondary-c: #C2E7FF;
+  --tertiary: #F2C063; --tertiary-c: #5C4100; --on-tertiary-c: #FFDEA6;
+  --error-c: #8C1D18; --on-error-c: #F9DEDC;
+  --inverse: #E3E3E3; --on-inverse: #303030; --inverse-primary: #0B57D0;
+  --scrim: rgba(0, 0, 0, .55);
+  color-scheme: dark;
+}
+:root {
+  --sans: "Google Sans Flex", "Google Sans", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --code: "Google Sans Code", "Roboto Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(.2, 0, 0, 1);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--on); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); min-height: 100vh;
+}
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+a { color: inherit; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 12px; }
+.num { font-variant-numeric: tabular-nums; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wrap { max-width: 36rem; margin: 0 auto; padding: 0 16px 40px; position: relative; }
+svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: block; }
+
+/* State layers: a soft wash of the content colour on press */
+.sl { position: relative; overflow: hidden; isolation: isolate; }
+.sl::after { content: ""; position: absolute; inset: 0; background: currentColor; opacity: 0; transition: opacity .15s var(--ease); pointer-events: none; border-radius: inherit; z-index: -1; }
+.sl:active::after { opacity: .12; }
+@media (hover: hover) { .sl:hover::after { opacity: .08; } }
+
+/* Icon buttons: 48px to touch, 40px to see */
+.ib { position: relative; flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; color: var(--on-var); text-decoration: none; }
+.ib::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: transparent; transition: background .2s var(--ease), border-radius .2s var(--ease); }
+/* Pressed icon buttons morph from a circle to a soft square, as in Material 3 Expressive */
+.ib:active::before, .ib:active::after { border-radius: 14px; }
+.ib::after { transition: opacity .15s var(--ease), border-radius .2s var(--ease); }
+.ib > * { position: relative; }
+.ib::after { inset: 4px; }
+.ib.filled { color: var(--on-primary); }
+.ib.filled::before { background: var(--primary); }
+.ib.tonal { color: var(--on-secondary-c); }
+.ib.tonal::before { background: var(--secondary-c); }
+.ib.big { width: 64px; height: 64px; }
+.ib.big::before, .ib.big::after { inset: 4px; border-radius: 18px; }
+.star[aria-pressed="true"] { color: var(--tertiary); }
+.star .on-i { display: none; }
+.star[aria-pressed="true"] .on-i { display: block; }
+.star[aria-pressed="true"] .off-i { display: none; }
+.star[aria-pressed="true"] svg { animation: pop .4s var(--ease); }
+@keyframes pop { 40% { transform: scale(1.25) rotate(-10deg); } }
+
+/* Top app bar: stays at the top and takes on a tint once the page scrolls under it */
+.top { position: sticky; top: 0; z-index: 10; margin: 0 -16px; padding: env(safe-area-inset-top) 16px 0; background: var(--bg); transition: background .25s var(--ease), box-shadow .25s var(--ease); }
+.top.raised { background: var(--card-2); box-shadow: 0 1px 0 var(--outline-var); }
+.appbar { display: flex; align-items: center; gap: 4px; padding: 12px 0 8px; }
+.brand { flex: 1; min-width: 0; padding-left: 4px; }
+.wordmark { font: 500 21px/28px var(--code); letter-spacing: -.02em; white-space: nowrap; }
+.wordmark .arg { color: var(--primary); }
+.wordmark .par { color: var(--on-var); }
+.sub { display: flex; min-width: 0; font-size: 13px; line-height: 18px; color: var(--on-var); white-space: nowrap; }
+.sub .lab { overflow: hidden; text-overflow: ellipsis; }
+.sub .cnt { flex: none; }
+.tools { display: flex; margin-right: -8px; }
+
+/* Search bar */
+.search { display: flex; align-items: center; height: 56px; margin: 4px 0 12px; padding: 0 4px 0 16px; border-radius: 28px; background: var(--card-2); color: var(--on-var); }
+.search[hidden] { display: none; }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; padding: 0 12px; font-size: 16px; color: var(--on); }
+.search input::placeholder { color: var(--on-var); }
+.search input::-webkit-search-cancel-button { display: none; }
+
+/* Notices */
+.notice { display: flex; gap: 8px; align-items: center; margin: 4px 0 12px; padding: 8px 4px 8px 16px; border-radius: 16px; background: var(--card-2); font-size: 14px; line-height: 20px; color: var(--on-var); }
+.notice p { margin: 0; flex: 1; }
+
+/* Hero card, with a little weather of its own: clouds drifting behind the fortnight's bars */
+.hero { position: relative; overflow: hidden; isolation: isolate; background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 55%, var(--card)) 0, var(--card) 150px); border-radius: 28px; margin: 12px 0 20px; }
+:root[data-theme="dark"] .hero { background: var(--card); background: linear-gradient(180deg, color-mix(in srgb, var(--primary-c) 38%, var(--card)) 0, var(--card) 150px); }
+.hero[hidden] { display: none; }
+.hero-in { position: relative; z-index: 1; padding: 18px 16px 12px 20px; }
+.sky { position: absolute; inset: 0 0 auto 0; height: 150px; overflow: hidden; pointer-events: none; z-index: 0; will-change: transform; }
+.cloud { position: absolute; left: 0; top: var(--y); width: 170px; height: 64px; opacity: var(--o, 1);
+  background:
+    radial-gradient(closest-side, var(--cloud), transparent) 0 22px / 80px 42px no-repeat,
+    radial-gradient(closest-side, var(--cloud), transparent) 34px 0 / 96px 64px no-repeat,
+    radial-gradient(closest-side, var(--cloud), transparent) 86px 14px / 84px 50px no-repeat;
+  animation: drift var(--t) linear var(--dl) infinite; }
+@keyframes drift { from { transform: translateX(-190px) scale(var(--s)); } to { transform: translateX(600px) scale(var(--s)); } }
+:root { --cloud: rgba(255, 255, 255, .95); }
+:root[data-theme="dark"] { --cloud: rgba(168, 199, 250, .10); }
+.c1 { --y: 6px; --s: .9; --t: 95s; --dl: -24s; }
+.c2 { --y: 44px; --s: .62; --t: 125s; --dl: -78s; --o: .85; }
+.c3 { --y: 16px; --s: 1.15; --t: 150s; --dl: -118s; --o: .7; }
+.strip.grow span { animation: grow .7s var(--ease) both; animation-delay: calc(var(--i) * 28ms); transform-origin: bottom; }
+@keyframes grow { from { transform: scaleY(0); } }
+.strip { display: flex; align-items: flex-end; gap: 4px; height: 48px; margin: 2px 4px 6px 0; }
+.strip span { flex: 1; min-width: 0; border-radius: 4px; background: var(--primary); opacity: .32; min-height: 4px; }
+.strip span.zero { background: var(--outline-var); opacity: 1; }
+.strip span.today { background: var(--tertiary); opacity: 1; }
+.strip-key { display: flex; justify-content: space-between; font-size: 12px; color: var(--on-var); margin: 0 4px 16px 0; }
+.eyebrow { margin: 0 0 6px; font-size: 14px; font-weight: 500; color: var(--primary); }
+.title-row { display: flex; align-items: flex-start; gap: 4px; }
+.title-row > div { flex: 1; min-width: 0; }
+.title-row .star { margin: 18px -8px 0 0; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: .01em; color: var(--on-var); }
+.h-title { margin: 6px 0 0; font-size: 24px; line-height: 32px; font-weight: 500; letter-spacing: -.01em; }
+.story { margin: 10px 0 0; font-size: 16px; line-height: 24px; color: var(--on-var); }
+.facts { margin: 10px 0 0; font-size: 13px; line-height: 18px; color: var(--on-var); }
+.empty-title { margin: 4px 0 0; font-size: 22px; line-height: 28px; font-weight: 500; }
+.empty-body { margin: 8px 0 4px; color: var(--on-var); font-size: 15px; }
+.acts { display: flex; align-items: center; gap: 2px; margin: 10px 0 0 -4px; }
+.acts .hint { margin-left: 8px; font-size: 13px; color: var(--on-var); }
+
+/* Stage labels and the new dot */
+.stage { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: .02em; background: var(--card-2); color: var(--on-var); }
+.stage.model { background: var(--tertiary-c); color: var(--on-tertiary-c); }
+.stage.ga { background: var(--primary-c); color: var(--on-primary-c); }
+.stage.deprecated, .stage.breaking { background: var(--error-c); color: var(--on-error-c); }
+.new-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tertiary); flex: none; }
+
+/* Filter chips */
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 32px; padding: 0 16px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--outline-var); font-size: 14px; font-weight: 500; color: var(--on-var); display: inline-flex; align-items: center; gap: 8px; }
+.chip svg.i { width: 18px; height: 18px; margin-left: -8px; display: none; }
+.chip[aria-pressed="true"] { background: var(--secondary-c); color: var(--on-secondary-c); box-shadow: none; }
+.chip[aria-pressed="true"] svg.i { display: block; animation: checkin .25s var(--ease); }
+@keyframes checkin { from { transform: scale(0); opacity: 0; } }
+.chip .c { font-size: 12px; opacity: .8; }
+.chip .new-dot { margin-left: -4px; }
+.pulse { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 10px 4px 0; font-size: 14px; line-height: 20px; color: var(--on-var); }
+.pulse p { margin: 0; flex: 1 1 14em; }
+
+/* Lists: grouped cards, rounder at the ends */
+.day { display: flex; align-items: baseline; gap: 8px; margin: 22px 4px 8px; font-size: 14px; font-weight: 500; color: var(--on); }
+.day .c { font-size: 12px; font-weight: 400; color: var(--on-var); }
+.group { display: grid; gap: 2px; }
+.group > * { background: var(--card); border-radius: 4px; }
+.group > :first-child { border-top-left-radius: 20px; border-top-right-radius: 20px; }
+.group > :last-child { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+.item.open { border-radius: 20px; margin: 6px 0; }
+.item-row { display: flex; align-items: flex-start; }
+.item-main { flex: 1; min-width: 0; text-align: left; padding: 14px 4px 14px 16px; display: grid; gap: 4px; border-radius: inherit; }
+.item-title { font-weight: 500; font-size: 16px; line-height: 22px; }
+.item-sum { font-size: 14px; line-height: 20px; color: var(--on-var); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.item.open .item-sum { display: none; }
+.item .star { margin: 4px 0 0; }
+.detail { padding: 0 12px 14px 16px; animation: unfold .32s var(--ease) both; }
+@keyframes unfold { from { opacity: 0; transform: translateY(-6px); } }
+/* Rising into place as they scroll into view */
+.rv { opacity: 0; transform: translateY(16px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.rv.in { opacity: 1; transform: none; }
+.detail .story { margin-top: 0; font-size: 15px; line-height: 22px; }
+.src { margin: 10px 0 0; font-size: 12px; line-height: 16px; color: var(--on-var); }
+.more { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 48px; font-size: 14px; font-weight: 500; color: var(--primary); }
+.empty { margin: 24px 4px 10px; color: var(--on-var); font-size: 15px; }
+
+/* Videos and articles */
+.media { display: grid; gap: 2px; margin: 12px 0 0; }
+.m-row { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 6px; margin: 0 -6px; border-radius: 16px; text-decoration: none; min-height: 48px; }
+.m-thumb { position: relative; flex: none; width: 96px; height: 54px; border-radius: 12px; background: var(--card-2); overflow: hidden; }
+.m-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.m-thumb .play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
+.m-thumb .play svg { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .6)); }
+.m-icon { flex: none; width: 96px; height: 54px; border-radius: 12px; background: var(--card-2); display: grid; place-items: center; color: var(--on-var); }
+.m-txt { min-width: 0; display: grid; gap: 2px; }
+.m-title { font-size: 14px; font-weight: 500; line-height: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m-sub { font-size: 12px; line-height: 16px; color: var(--on-var); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group > .m-row { margin: 0; padding: 10px 12px; }
+
+/* Footer */
+.foot { display: flex; align-items: flex-start; gap: 8px; margin: 36px 4px 0; font-size: 12px; line-height: 18px; color: var(--on-var); }
+.foot div { flex: 1; }
+.foot p { margin: 0 0 6px; }
+.foot a { color: var(--on); text-underline-offset: 3px; }
+.foot .ib { margin: -10px -8px 0 0; }
+
+/* Bottom sheets */
+dialog.sheet {
+  position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%; max-width: 36rem; max-height: 88vh;
+  border: 0; border-radius: 28px 28px 0 0; padding: 0; background: var(--sheet); color: var(--on); overflow: auto; overscroll-behavior: contain;
+}
+dialog.sheet[open] { animation: rise .3s var(--ease); }
+dialog.sheet::backdrop { background: var(--scrim); }
+dialog.sheet.springing { transition: transform .22s var(--ease); }
+@keyframes rise { from { transform: translateY(48px); opacity: 0; } }
+.sheet-in { padding: 0 16px calc(24px + env(safe-area-inset-bottom)); outline: none; }
+.grabber { position: relative; width: 72px; height: 22px; margin: 0 auto 2px; }
+.grabber::before { content: ""; position: absolute; left: 20px; right: 20px; top: 11px; height: 4px; border-radius: 2px; background: var(--on-var); opacity: .4; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding-left: 8px; }
+.sheet-head h2 { margin: 0; font-size: 22px; line-height: 28px; font-weight: 400; }
+.sheet h3 { margin: 22px 8px 8px; font-size: 14px; font-weight: 500; color: var(--primary); }
+.sheet p { margin: 6px 0; color: var(--on-var); font-size: 15px; }
+.sheet .small { font-size: 13px; line-height: 18px; color: var(--on-var); margin: 0 8px 10px; }
+.sheet .group > * { background: var(--card); }
+:root[data-theme="light"] .sheet .group > * { background: #FFFFFF; }
+.row { display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 8px 12px 8px 16px; text-align: left; width: 100%; text-decoration: none; }
+.row .txt { flex: 1; min-width: 0; font-size: 16px; line-height: 22px; }
+.row small { display: block; font-size: 13px; line-height: 18px; color: var(--on-var); }
+.row .lead { color: var(--on-var); }
+.dot-ok, .dot-bad { width: 10px; height: 10px; border-radius: 50%; flex: none; margin: 0 7px; }
+.dot-ok { background: var(--primary); }
+.dot-bad { background: var(--outline); box-shadow: 0 0 0 3px var(--error-c); }
+/* Material switch */
+.switch { position: relative; width: 52px; height: 32px; border-radius: 16px; flex: none; background: var(--card-2); box-shadow: inset 0 0 0 2px var(--outline); transition: background .2s var(--ease); }
+.switch::after { content: ""; position: absolute; top: 8px; left: 8px; width: 16px; height: 16px; border-radius: 50%; background: var(--outline); transition: all .2s var(--ease); }
+.switch[aria-checked="true"] { background: var(--primary); box-shadow: none; }
+.switch[aria-checked="true"]::after { top: 4px; left: 24px; width: 24px; height: 24px; background: var(--on-primary); }
+.welcome { padding: 4px 8px 0; }
+.welcome .logo { width: 56px; height: 56px; display: block; margin: 6px 0 16px; }
+.welcome h2 { margin: 0 0 8px; font-size: 28px; line-height: 36px; font-weight: 400; }
+.welcome h2 code, .wm { font-family: var(--code); font-weight: 500; letter-spacing: -.02em; }
+.welcome .lede { color: var(--on); font-size: 18px; line-height: 26px; font-weight: 500; }
+.welcome p { font-size: 16px; line-height: 24px; color: var(--on-var); }
+.welcome .sig { margin-top: 14px; color: var(--on); font-weight: 500; }
+.welcome .sig a { text-underline-offset: 3px; }
+.welcome .acts { margin-top: 18px; }
+
+/* Spinner: a comet */
+.spinner { border-radius: 50%; background: conic-gradient(from 90deg, transparent 10%, currentColor 95%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.2px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.2px), #000 calc(100% - 2px)); animation: spin .8s linear infinite; }
+.spinner { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 8px; color: var(--primary); }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+/* Snackbar: a popover, so it shows above open sheets */
+.toast { position: fixed; inset: auto auto calc(16px + env(safe-area-inset-bottom)) 50%; margin: 0; border: 0; width: min(560px, calc(100% - 32px));
+  transform: translate(-50%, 16px); opacity: 0; pointer-events: none; background: var(--inverse); color: var(--on-inverse); padding: 14px 16px; border-radius: 8px;
+  font-size: 14px; line-height: 20px; text-align: left; transition: opacity .2s var(--ease), transform .2s var(--ease); z-index: 30; overflow: visible;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .2); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .rv { opacity: 1; transform: none; }
+  .spinner { animation: spin 1.6s linear infinite !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top" id="top">
+  <header class="appbar">
+    <div class="brand">
+      <div class="wordmark" aria-label="doGet(news)">doGet<span class="par">(</span><span class="arg">news</span><span class="par">)</span></div>
+      <div class="sub num" id="sub"></div>
+    </div>
+    <div class="tools">
+      <button class="ib sl" id="searchBtn" type="button" aria-label="Search" title="Search" aria-expanded="false" aria-controls="searchRow"></button>
+      <button class="ib sl" id="themeBtn" type="button"></button>
+      <button class="ib sl" id="settingsBtn" type="button" aria-label="Settings" title="Settings"></button>
+    </div>
+  </header>
+  <div class="search" id="searchRow" hidden>
+    <span id="searchIcon"></span>
+    <label class="vh" for="q">Search updates, products and videos</label>
+    <input id="q" type="search" placeholder="Search updates" autocomplete="off" enterkeyhint="search">
+    <button class="ib sl" id="searchClose" type="button" aria-label="Close search" title="Close search"></button>
+  </div>
+  </div>
+  <div id="notices"></div>
+  <main>
+    <section class="hero" id="hero" data-rv="hero"><div class="sky" id="sky" aria-hidden="true"><span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span></div><div class="hero-in" id="heroIn" aria-live="polite"></div></section>
+    <nav class="chips" id="tracks" aria-label="What to show"></nav>
+    <div id="pulse"></div>
+    <div id="list"></div>
+  </main>
+  <footer class="foot" id="foot"></footer>
+</div>
+<dialog class="sheet" id="sheet" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody" tabindex="-1"></div></dialog>
+<div class="toast" id="toast" role="status" popover="manual"></div>
+
+<script src="core.js?v=1"></script>
+<script>
+(() => {
+'use strict';
+const C = window.Core;
+
+/* ---------- Settings you might change ---------- */
+const LINKEDIN = '';   // your LinkedIn profile link, e.g. https://www.linkedin.com/in/your-name/
+const APP_URL = 'https://quick-sheet.github.io/doGetNews/';
+const PER_DAY = 10;    // updates shown per day before "Show more"
+const NAME = 'doGet(news)';
+const BAR = { light: '#F0F4F9', dark: '#131314' };
+
+const VIEWS = C.TRACKS.concat([{ id: 'watch', n: 'Watch and read' }, { id: 'stars', n: 'Starred' }]);
+
+const UA = navigator.userAgent;
+const isIOS = /iP(hone|ad|od)/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/.test(UA);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+/* ---------- Storage ---------- */
+const get = (k, d) => { try { const v = localStorage.getItem('dgn.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const put = (k, v) => { try { localStorage.setItem('dgn.' + k, JSON.stringify(v)); } catch {} };
+
+const S = {
+  brief: null, loading: true, missing: false, failed: false, saved: false, fetchedAt: 0,
+  view: get('view', 'all'),
+  set: Object.assign({ theme: null, hidden: {}, quiet: false }, get('settings', {})),
+  since: get('seenAt', null),
+  stars: get('stars', {}),
+  open: null, more: {}, q: '', searching: false, onlyNew: false, installEvt: null,
+};
+if (!VIEWS.some((v) => v.id === S.view)) S.view = 'all';
+const saveSet = () => put('settings', S.set);
+
+/* ---------- Helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const now = () => Date.now();
+const ctx = { android: isAndroid, standalone };
+
+// Material Symbols shapes (Apache 2.0), drawn inline so they never wait on a font
+const P = {
+  search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
+  dark: 'M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z',
+  light: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2 13h2a1 1 0 0 0 0-2H2a1 1 0 0 0 0 2zm18 0h2a1 1 0 0 0 0-2h-2a1 1 0 0 0 0 2zM11 2v2a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0zm0 18v2a1 1 0 0 0 2 0v-2a1 1 0 0 0-2 0zM5.99 4.58a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41L5.99 4.58zm12.37 12.37a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41l-1.06-1.06zm1.06-10.96a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41l1.06-1.06zM7.05 18.36a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41l1.06-1.06z',
+  open: 'M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
+  docs: 'M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z',
+  starOff: 'M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z',
+  starOn: 'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+  share: 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 0 0 21 5a3 3 0 1 0-5.91.7L8.04 9.81A2.99 2.99 0 0 0 3 12a3 3 0 0 0 5.04 2.19l7.12 4.16c-.05.21-.08.43-.08.65A2.92 2.92 0 1 0 18 16.08z',
+  arrow: 'M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z',
+  refresh: 'M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  more: 'M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z',
+  less: 'm12 8-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z',
+  play: 'M8 5v14l11-7z',
+  article: 'M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
+  install: 'M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z',
+  info: 'M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z',
+};
+const icon = (k, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[k]}"/></svg>`;
+const LOGO = '<svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="128" fill="#0B57D0"/><path d="M190 132c-44 32-70 76-70 124s26 92 70 124M322 132c44 32 70 76 70 124s-26 92-70 124" fill="none" stroke="#fff" stroke-width="36" stroke-linecap="round"/><circle cx="256" cy="256" r="38" fill="#F2C063"/></svg>';
+const WM = `<span class="wm">${NAME}</span>`;
+
+function attrs(url) { const h = C.extHref(url, ctx); return `href="${esc(h)}"${C.isIntent(h) ? '' : ' target="_blank" rel="noopener"'}`; }
+// An icon button that opens a page outside the app
+function linkIcon(url, kind, ic, label) { return `<a class="ib sl ${kind}" ${attrs(url)} aria-label="${esc(label)}" title="${esc(label)}">${icon(ic)}</a>`; }
+
+let toastTimer, toastHide;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  try { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover(); } catch {}
+  requestAnimationFrame(() => t.classList.add('show'));
+  clearTimeout(toastTimer); clearTimeout(toastHide);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+    toastHide = setTimeout(() => { try { t.hidePopover(); } catch {} }, 250);
+  }, Math.max(2600, msg.length * 55));
+}
+
+/* ---------- Loading the brief ---------- */
+async function load() {
+  S.loading = !S.brief;
+  if (S.loading) render();
+  try {
+    const r = await fetch('brief.json', { cache: 'no-cache' });
+    if (r.status === 404) { S.missing = true; S.brief = null; }
+    else if (!r.ok) throw new Error('status ' + r.status);
+    else {
+      const b = C.prepare(await r.json());
+      if (!b) throw new Error('not a brief');
+      S.brief = b; S.missing = false;
+      S.saved = r.headers.get('x-dgn-saved') === '1';
+    }
+    S.failed = false;
+  } catch { S.failed = !S.brief; S.saved = !!S.brief; }
+  S.fetchedAt = now();
+  S.loading = false;
+  render();
+  // Next time, "new" means anything that arrived after this brief
+  if (S.brief) put('seenAt', S.brief.latestRun || S.brief.generated);
+}
+
+/* ---------- Choosing what to show ---------- */
+const isTrack = () => C.TRACKS.some((t) => t.id === S.view);
+function trackList(withSearch) {
+  if (!S.brief) return [];
+  return C.filter(S.brief.items, { track: S.view, hidden: S.set.hidden, quiet: S.set.quiet, q: withSearch ? S.q : '', onlyNew: S.onlyNew, since: S.since, srcName: S.brief.srcName });
+}
+function mediaList() {
+  if (!S.brief) return [];
+  const v = Object.values(S.brief.videos).map((x) => Object.assign({ kind: 'video' }, x));
+  const a = Object.values(S.brief.articles).map((x) => Object.assign({ kind: 'article' }, x));
+  return v.concat(a).filter((x) => C.matches(x, S.q)).sort((x, y) => y.d - x.d);
+}
+function starList() {
+  return Object.values(S.stars).filter((x) => C.matches(x, S.q, S.brief && S.brief.srcName)).sort((a, b) => b.d - a.d);
+}
+const findItem = (id) => (S.brief && S.brief.items.find((x) => x.id === id)) || S.stars[id] || null;
+
+/* ---------- Rendering ---------- */
+function stageHtml(it) { return it.st && C.STAGES[it.st] ? `<span class="stage ${it.st}">${esc(C.STAGES[it.st])}</span>` : ''; }
+function metaHtml(it) {
+  const isNew = S.view !== 'stars' && C.isNew(it, S.since);
+  const label = (C.TRACK_NAME[it.tr] || '') + (it.p && it.p[0] ? ' · ' + it.p[0] : '');
+  return `${isNew ? '<span class="new-dot" aria-hidden="true"></span><span class="vh">New. </span>' : ''}<span>${esc(label)}</span>${stageHtml(it)}`;
+}
+function starBtn(it) {
+  const on = !!S.stars[it.id];
+  return `<button class="ib sl star" type="button" data-star="${esc(it.id)}" aria-pressed="${on}" aria-label="${on ? 'Starred. Tap to remove' : 'Star this update'}" title="${on ? 'Remove star' : 'Star'}">${icon('starOff', 'off-i')}${icon('starOn', 'on-i')}</button>`;
+}
+function videoRow(v) {
+  return `<a class="m-row sl" ${attrs(v.u)} data-rv="v${esc(v.id)}" aria-label="${esc('Watch on YouTube: ' + v.t)}"><span class="m-thumb"><img src="${esc(C.thumb(v.id))}" alt="" loading="lazy" decoding="async"><span class="play">${icon('play')}</span></span>
+    <span class="m-txt"><span class="m-title">${esc(v.t)}</span><span class="m-sub">${esc(v.ch || 'YouTube')} · ${esc(C.ago(v.d, now()))}</span></span></a>`;
+}
+function articleRow(a) {
+  return `<a class="m-row sl" ${attrs(a.u)} data-rv="a${esc(a.id)}" aria-label="${esc('Read on Medium: ' + a.t)}"><span class="m-icon">${icon('article')}</span>
+    <span class="m-txt"><span class="m-title">${esc(a.t)}</span><span class="m-sub">${esc(a.by ? 'Medium · ' + a.by : 'Medium')} · ${esc(C.ago(a.d, now()))}</span></span></a>`;
+}
+function mediaFor(it) {
+  if (!S.brief) return '';
+  const v = (it.v || []).map((id) => S.brief.videos[id]).filter(Boolean).map(videoRow);
+  const a = (it.ar || []).map((id) => S.brief.articles[id]).filter(Boolean).map(articleRow);
+  return v.length || a.length ? `<div class="media">${v.join('')}${a.join('')}</div>` : '';
+}
+// Open on Google (filled), then docs (tonal): icons, with the words in their labels
+function actsFor(it, extra = '') {
+  const docs = (it.dc || []).slice(0, 1).map((d) => linkIcon(d.u, 'tonal', 'docs', d.n + ' docs'));   // one docs button: the lead product's
+  const hint = (it.dc || []).length ? '' : `<span class="hint">${esc(C.readLabel(it))}</span>`;
+  return `<div class="acts">${linkIcon(it.u, 'filled', 'open', C.readLabel(it))}${docs.join('')}${extra}${hint}</div>`;
+}
+function srcLine(it) {
+  const name = (S.brief && S.brief.srcName[it.src]) || it.srcName || '';
+  return `<p class="src">${esc(name ? name + ', ' : '')}${esc(C.longDate(it.d))}${it.g ? '. Google lists it under ' + esc(it.g) + '.' : ''}</p>`;
+}
+
+function renderSub() {
+  let lab, cnt;
+  if (S.searching && S.q.trim()) {
+    const n = S.view === 'watch' ? mediaList().length : S.view === 'stars' ? starList().length : trackList(true).length;
+    lab = 'Search'; cnt = C.plural(n, 'result', 'results');
+  } else if (S.view === 'watch') { lab = 'Watch and read'; cnt = String(mediaList().length); }
+  else if (S.view === 'stars') { lab = 'Starred'; cnt = String(Object.keys(S.stars).length); }
+  else if (S.brief) {
+    lab = (VIEWS.find((v) => v.id === S.view) || VIEWS[0]).n;
+    cnt = C.plural(trackList(false).length, 'update', 'updates');
+  } else { lab = 'What’s new across Google, once a day'; cnt = ''; }
+  $('#sub').innerHTML = `<span class="lab">${esc(lab)}</span>${cnt ? `<span class="cnt">&nbsp;·&nbsp;${esc(cnt)}</span>` : ''}`;
+}
+
+function renderNotices() {
+  const out = [];
+  const dismissed = get('dismissed', {});
+  const x = `<button class="ib sl" type="button" data-dismiss="install" aria-label="Dismiss" title="Dismiss">${icon('close')}</button>`;
+  if (S.brief && C.isStale(S.brief.generated, now())) {
+    out.push(`<div class="notice"><p>This brief is from ${esc(C.longDate(S.brief.generated))}. The daily update may have paused, so the newest releases could be missing.</p></div>`);
+  } else if (S.brief && (S.saved || navigator.onLine === false)) {
+    out.push(`<div class="notice"><p>No connection just now. Showing the brief ${esc(C.updatedTxt(S.brief.generated, now()).replace(/^Updated/, 'updated'))}.</p></div>`);
+  }
+  if (!standalone && !dismissed.install) {
+    if (S.installEvt) out.push(`<div class="notice"><p>Add ${NAME} to your home screen for one-tap access.</p><button class="ib sl tonal" type="button" data-act="install" aria-label="Install" title="Install">${icon('install')}</button>${x}</div>`);
+    else if (isIOS) out.push(`<div class="notice"><p>Add ${NAME} to your Home Screen: tap Share, then Add to Home Screen.</p>${x}</div>`);
+  }
+  $('#notices').innerHTML = out.join('');
+}
+
+function stripHtml(list) {
+  const b = S.brief, days = b.keepDays, end = b.generated || now();
+  const counts = [];
+  for (let i = days - 1; i >= 0; i--) counts.push({ k: C.dayKey(end - i * 864e5), ms: end - i * 864e5, n: 0 });
+  const byK = {};
+  counts.forEach((c) => { byK[c.k] = c; });
+  list.forEach((x) => { const c = byK[C.dayKey(x.d)]; if (c) c.n++; });
+  const max = Math.max(1, ...counts.map((c) => c.n));
+  const todayK = C.dayKey(now());
+  const label = 'Updates per day over the last two weeks: ' + counts.map((c) => `${C.shortDate(c.ms)} ${c.n}`).join(', ');
+  const sig = counts.map((c) => c.n).join(',');
+  const grow = sig !== S.stripSig;
+  S.stripSig = sig;
+  return `<div class="strip${grow ? ' grow' : ''}" role="img" aria-label="${esc(label)}">${counts.map((c, i) =>
+    `<span class="${c.k === todayK ? 'today' : ''}${c.n ? '' : ' zero'}" style="height:${Math.max(8, Math.round(100 * c.n / max))}%;--i:${i}"></span>`).join('')}</div>
+    <div class="strip-key num"><span>${esc(C.shortDate(counts[0].ms))}</span><span>${counts[counts.length - 1].k === todayK ? 'Today' : esc(C.shortDate(counts[counts.length - 1].ms))}</span></div>`;
+}
+
+let heroId = null;
+function renderHero() {
+  const box = $('#hero'), el = $('#heroIn');
+  heroId = null;
+  if ((S.searching && S.q.trim()) || !isTrack()) { box.hidden = true; return; }
+  box.hidden = false;
+  if (S.loading) { el.innerHTML = `<p class="empty-body"><span class="spinner" aria-hidden="true"></span>Getting today’s brief…</p>`; return; }
+  if (S.missing) {
+    el.innerHTML = `<h1 class="empty-title">The first brief is on its way</h1>
+      <p class="empty-body">${WM} publishes a new brief once a day, at about 7am UK time. Check back after that.</p>`;
+    return;
+  }
+  if (S.failed || !S.brief) {
+    el.innerHTML = `<h1 class="empty-title">Couldn’t load the brief</h1>
+      <p class="empty-body">Check your connection, then try again.</p>
+      <div class="acts"><button class="ib sl filled" type="button" data-act="retry" aria-label="Try again" title="Try again">${icon('refresh')}</button><span class="hint">Try again</span></div>`;
+    return;
+  }
+  const list = trackList(false);
+  const it = C.topPick(list, S.brief);
+  const strip = stripHtml(C.filter(S.brief.items, { track: S.view, hidden: S.set.hidden, quiet: S.set.quiet }));
+  if (!it) {
+    const name = (VIEWS.find((v) => v.id === S.view) || VIEWS[0]).n;
+    el.innerHTML = strip + `<h1 class="empty-title">${S.view === 'all' ? 'Nothing in the last two weeks' : `No ${esc(name)} updates in the last two weeks`}</h1>
+      <p class="empty-body">${S.onlyNew ? 'Nothing new since your last visit.' : 'Try another track, or check Settings for tracks hidden from All.'}</p>`;
+    return;
+  }
+  heroId = it.id;
+  const fromLatest = !S.brief.firstRun && it.a >= S.brief.latestRun - 3600e3;
+  const eyebrow = fromLatest && C.dayKey(S.brief.latestRun) === C.dayKey(now()) ? 'Top of today’s brief' : 'Top of the brief';
+  const nv = (it.v || []).filter((id) => S.brief.videos[id]).length, na = (it.ar || []).filter((id) => S.brief.articles[id]).length;
+  const extra = [nv ? C.plural(nv, 'video', 'videos') : '', na ? C.plural(na, 'article', 'articles') : ''].filter(Boolean).join(' and ').replace(/(\d) /g, '$1 ');
+  el.innerHTML = strip + `
+    <p class="eyebrow">${esc(eyebrow)}</p>
+    <div class="title-row"><div><div class="meta">${metaHtml(it)}</div><h1 class="h-title">${esc(it.t)}</h1></div>${starBtn(it)}</div>
+    ${it.s ? `<p class="story">${esc(it.s)}</p>` : ''}
+    <p class="facts">From ${esc(S.brief.srcName[it.src] || 'Google')} on ${esc(C.longDate(it.d))}.${extra ? ` ${esc(extra)} go${nv + na === 1 ? 'es' : ''} with it.` : ''}</p>
+    ${actsFor(it)}
+    ${mediaFor(it)}`;
+}
+
+function renderTracks() {
+  const show = !!S.brief || S.view === 'stars';
+  $('#tracks').innerHTML = show ? VIEWS.map((v) => {
+    let c = '';
+    if (v.id === 'stars') { const n = Object.keys(S.stars).length; c = n ? `<span class="c num">${n}</span>` : ''; }
+    return `<button class="chip sl" type="button" data-view="${v.id}" aria-pressed="${S.view === v.id}">${icon('check')}${esc(v.n)}${c}</button>`;
+  }).join('') : '';
+}
+
+function renderPulse() {
+  const el = $('#pulse');
+  if (!S.brief || !isTrack() || (S.searching && S.q.trim())) { el.innerHTML = ''; return; }
+  const all = C.filter(S.brief.items, { track: S.view, hidden: S.set.hidden, quiet: S.set.quiet });
+  let txt, chip = '';
+  if (S.since == null) txt = `${C.plural(all.length, 'update', 'updates')} from the last two weeks.`;
+  else {
+    const n = C.newCount(all, S.since);
+    if (n) {
+      txt = `${n} new since your last visit.`;
+      chip = `<button class="chip sl" type="button" data-act="only-new" aria-pressed="${S.onlyNew}">${icon('check')}${S.onlyNew ? '' : '<span class="new-dot" aria-hidden="true"></span>'}New only</button>`;
+    } else txt = 'Nothing new since your last visit. The next brief lands at about 7am UK time.';
+  }
+  el.innerHTML = `<div class="pulse"><p>${esc(txt)}</p>${chip}</div>`;
+}
+
+function itemHtml(it) {
+  const open = S.open === it.id;
+  return `<article class="item${open ? ' open' : ''}" data-id="${esc(it.id)}" data-rv="i${esc(it.id)}">
+    <div class="item-row">
+      <button class="item-main sl" type="button" data-open="${esc(it.id)}" aria-expanded="${open}">
+        <span class="meta">${metaHtml(it)}</span>
+        <span class="item-title">${esc(it.t)}</span>
+        ${it.s ? `<span class="item-sum">${esc(it.s)}</span>` : ''}
+      </button>${starBtn(it)}
+    </div>
+    ${open ? `<div class="detail">${it.s ? `<p class="story">${esc(it.s)}</p>` : ''}${actsFor(it)}${mediaFor(it)}${srcLine(it)}</div>` : ''}
+  </article>`;
+}
+
+function dayBlock(d, rows, more) { return `<h2 class="day" data-rv="d${S.view}${d.key}">${esc(d.label)}<span class="c num">${d.items.length}</span></h2><div class="group">${rows}${more || ''}</div>`; }
+
+function renderList() {
+  const el = $('#list');
+  if (S.view === 'watch') return renderWatch(el);
+  if (S.view === 'stars') return renderStars(el);
+  if (!S.brief) { el.innerHTML = ''; return; }
+  const searching = S.searching && S.q.trim();
+  const list = trackList(true).filter((x) => searching || x.id !== heroId);
+  if (!list.length) {
+    el.innerHTML = searching ? `<p class="empty">Nothing matches “${esc(S.q.trim())}”. Try a product name, like BigQuery or Gmail.</p>` : '';
+    return;
+  }
+  el.innerHTML = C.group(list, now()).map((d) => {
+    const all = !!S.more[d.key] || searching;
+    const shown = all ? d.items : d.items.filter((x, i) => i < PER_DAY || x.id === S.open);
+    const hidden = d.items.length - shown.length;
+    const more = hidden > 0 ? `<button class="more sl" type="button" data-more="${d.key}">Show ${hidden} more${icon('more')}</button>`
+      : (S.more[d.key] && !searching && d.items.length > PER_DAY ? `<button class="more sl" type="button" data-more="${d.key}">Show fewer${icon('less')}</button>` : '');
+    return dayBlock(d, shown.map(itemHtml).join(''), more);
+  }).join('');
+}
+
+function renderWatch(el) {
+  const list = mediaList();
+  if (!list.length) {
+    el.innerHTML = `<p class="empty">${S.q.trim() ? `No videos or articles match “${esc(S.q.trim())}”.` : 'No videos or articles in the last month yet.'}</p>`;
+    return;
+  }
+  el.innerHTML = `<div class="pulse"><p>New videos from Google’s official channels and articles from the Google Cloud Community, newest first.</p></div>` +
+    C.group(list, now()).map((d) => dayBlock(d, d.items.sort((a, b) => b.d - a.d).map((x) => (x.kind === 'video' ? videoRow(x) : articleRow(x))).join(''))).join('');
+}
+
+function renderStars(el) {
+  // Use today's copy of a starred update when it's still in the brief, so its videos show too
+  const list = starList().map((x) => (S.brief && S.brief.items.find((i) => i.id === x.id)) || x);
+  if (!list.length) {
+    el.innerHTML = `<p class="empty">${S.q.trim() ? `No starred updates match “${esc(S.q.trim())}”.` : 'Nothing starred yet. Tap the star on any update to keep it here, even after it leaves the brief.'}</p>`;
+    return;
+  }
+  el.innerHTML = C.group(list, now()).map((d) => dayBlock(d, d.items.map(itemHtml).join(''))).join('');
+}
+
+const me = () => (LINKEDIN ? `<a ${attrs(LINKEDIN)} aria-label="G. Sondhi on LinkedIn">G. Sondhi</a>` : 'G. Sondhi');
+function renderFoot() {
+  $('#foot').innerHTML = `<div><p>Made by ${me()}. Free for the Google developer community.</p>
+    <p>Independent and not affiliated with Google. Every update links to Google’s own page.</p>
+    <p>${S.brief ? esc(C.updatedTxt(S.brief.generated, now())) + '. ' : ''}A new brief arrives once a day, at about 7am UK time.</p></div>
+    <button class="ib sl" type="button" data-act="share" aria-label="Share ${NAME}" title="Share">${icon('share')}</button>`;
+}
+
+function render() {
+  renderNotices();
+  renderHero();
+  renderTracks();
+  renderPulse();
+  renderList();
+  renderSub();
+  renderFoot();
+  reveal();
+}
+
+/* ---------- Motion, kept light ---------- */
+// Cards, day headings and the hero rise into place the first time they scroll into view.
+// Anything already seen this visit is simply shown, so opening an update or starring never replays it.
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const seen = new Set();
+let io = null;
+function reveal() {
+  const fresh = [];
+  document.querySelectorAll('[data-rv]:not(.in)').forEach((el) => {
+    if (reduced() || !('IntersectionObserver' in window) || seen.has(el.dataset.rv)) { el.classList.add('in'); return; }
+    if (!el.classList.contains('rv')) { el.classList.add('rv'); fresh.push(el); }
+  });
+  if (!fresh.length) return;
+  if (!io) io = new IntersectionObserver((entries) => {
+    entries.filter((en) => en.isIntersecting).forEach((en, j) => {
+      // Those arriving together come in one after another
+      en.target.style.transitionDelay = Math.min(j, 6) * 45 + 'ms';
+      en.target.classList.add('in');
+      seen.add(en.target.dataset.rv);
+      io.unobserve(en.target);
+      setTimeout(() => { en.target.style.transitionDelay = ''; }, 900);
+    });
+  }, { rootMargin: '0px 0px -6% 0px' });
+  fresh.forEach((el) => io.observe(el));
+}
+// A new view starts fresh, so its cards rise in
+function freshView() { seen.forEach((k) => { if (k !== 'hero') seen.delete(k); }); }
+
+// The app bar takes on a tint once content scrolls under it; the clouds drift a little slower than the page
+let ticking = false;
+addEventListener('scroll', () => {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
+    ticking = false;
+    const y = scrollY;
+    $('#top').classList.toggle('raised', y > 4);
+    if (!reduced() && y < 700) $('#sky').style.transform = `translateY(${(y * 0.35).toFixed(1)}px)`;
+  });
+}, { passive: true });
+
+/* ---------- Sheets ---------- */
+const sheet = $('#sheet');
+function openSheet(html) {
+  sheet.style.transform = '';
+  $('#sheetBody').innerHTML = `<div class="grabber"></div>` + html;
+  if (!sheet.open) sheet.showModal();
+  $('#sheetBody').focus({ preventScroll: true });   // the sheet itself, so no button opens with a focus ring
+  sheet.scrollTop = 0;
+}
+const welcomed = () => { if (S.welcoming) { S.welcoming = false; put('welcomed', 1); } };
+function closeSheet() { welcomed(); if (sheet.open) sheet.close(); }
+sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
+sheet.addEventListener('close', () => { sheet.style.transform = ''; welcomed(); });   // also Escape and Android back
+const head = (title) => `<div class="sheet-head"><h2 id="sheetTitle">${title}</h2><button class="ib sl" type="button" data-act="close" aria-label="Close" title="Close">${icon('close')}</button></div>`;
+
+function openWelcome() {
+  S.welcoming = true;
+  openSheet(`<div class="welcome">${LOGO}
+    <h2 id="sheetTitle">Welcome to <code>${NAME}</code></h2>
+    <p class="lede">Welcome, fellow Google developers. It’s free for the whole community.</p>
+    <p>Google Workspace, Google Cloud and GenAI move at a pace that’s hard to keep up with. ${WM} is my attempt to bring it all into one calm daily brief: what Google released, with links to Google’s own notes, docs, videos and tutorials.</p>
+    <p>It runs on the lightest stack I could find. A single Apps Script call once a day writes one file, and GitHub Pages serves it. No accounts, no tracking, nothing to pay.</p>
+    <p>Enjoy.</p>
+    <p class="sig">${me()}</p>
+    <div class="acts"><button class="ib big sl filled" type="button" data-act="close" aria-label="Read today’s brief" title="Read today’s brief">${icon('arrow')}</button>
+      <span class="hint">Read today’s brief</span><span style="flex:1"></span>
+      <button class="ib sl tonal" type="button" data-act="share" aria-label="Share ${NAME}" title="Share">${icon('share')}</button></div>
+  </div>`);
+}
+
+function sourcesHtml() {
+  const b = S.brief;
+  if (!b || !b.sources.length) return '<p class="small">The list of sources appears with the first brief.</p>';
+  const kindWord = { video: 'YouTube', article: 'Medium' };
+  return `<div class="group">${b.sources.map((s) => {
+    const what = s.k === 'video' ? C.plural(s.c, 'video', 'videos') : s.k === 'article' ? C.plural(s.c, 'article', 'articles') : C.plural(s.c, 'update', 'updates');
+    const line = s.ok ? `${kindWord[s.k] ? kindWord[s.k] + ' · ' : ''}${what} today` : `Not read today: it ${esc(s.e || 'could not be reached')}`;
+    return `<a class="row sl src-row" ${attrs(s.h)}><span class="${s.ok ? 'dot-ok' : 'dot-bad'}" aria-hidden="true"></span><span class="txt">${esc(s.n)}<small>${line}</small></span></a>`;
+  }).join('')}</div>`;
+}
+
+function openSettings() {
+  const tr = C.TRACKS.filter((t) => t.id !== 'all');
+  const b = S.brief;
+  openSheet(head('Settings') + `
+    <h3>Show in All</h3>
+    <div class="group">
+    ${tr.map((t) => `<div class="row"><span class="txt">${esc(t.n)}</span><button class="switch" type="button" role="switch" data-hide="${t.id}" aria-checked="${!S.set.hidden[t.id]}" aria-label="Show ${esc(t.n)} in All"></button></div>`).join('')}
+    <div class="row"><span class="txt">Quieter Cloud release notes<small>Only new models, GA, preview, deprecations and breaking changes from Google Cloud’s notes</small></span>
+      <button class="switch" type="button" role="switch" data-act="quiet" aria-checked="${!!S.set.quiet}" aria-label="Quieter Cloud release notes"></button></div>
+    </div>
+
+    <h3>About</h3>
+    <div class="group">
+      <button class="row sl" type="button" data-act="welcome"><span class="lead">${icon('info')}</span><span class="txt">About ${WM}<small>Made by G. Sondhi, free for the Google developer community</small></span></button>
+      <button class="row sl" type="button" data-act="share"><span class="lead">${icon('share')}</span><span class="txt">Share ${WM}<small>Send the link to a fellow developer</small></span></button>
+    </div>
+
+    <h3>Sources</h3>
+    <p class="small">${b ? esc(C.updatedTxt(b.generated, now())) + '. ' : ''}Read once a day at about 7am UK time. There’s no refresh button: the brief is the same for everyone, so it takes one Apps Script run a day.</p>
+    ${sourcesHtml()}
+  `);
+}
+
+/* Drag a sheet down by its top band, or swipe it right, to close it */
+(function sheetGestures() {
+  let g = null;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const scrollsSideways = (el) => {
+    for (let n = el; n && n !== sheet; n = n.parentElement) {
+      const ox = getComputedStyle(n).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && n.scrollWidth > n.clientWidth) return true;
+    }
+    return false;
+  };
+  sheet.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || e.target.closest('input, textarea, select') || scrollsSideways(e.target)) { g = null; return; }
+    if (String(getSelection && getSelection()).length) { g = null; return; }
+    const p = e.touches[0];
+    const top = sheet.getBoundingClientRect().top;
+    const handle = !!e.target.closest('.grabber, .sheet-head, .welcome h2') || p.clientY - top < 56;
+    g = { x0: p.clientX, y0: p.clientY, t0: e.timeStamp, dir: null, handle, dx: 0, dy: 0 };
+  }, { passive: true });
+  sheet.addEventListener('touchmove', (e) => {
+    if (!g) return;
+    const p = e.touches[0], dx = p.clientX - g.x0, dy = p.clientY - g.y0;
+    if (!g.dir) {
+      if (Math.hypot(dx, dy) < 10) return;
+      if (Math.abs(dx) > Math.abs(dy) && dx > 0) g.dir = 'x';
+      else if (dy > 0 && Math.abs(dy) > Math.abs(dx) && g.handle) g.dir = 'y';
+      else { g = null; return; }
+    }
+    e.preventDefault();
+    g.dx = dx; g.dy = dy; g.t = e.timeStamp;
+    if (reduced()) return;
+    sheet.classList.remove('springing');
+    sheet.style.transform = g.dir === 'x' ? `translateX(${Math.max(0, dx)}px)` : `translateY(${Math.max(0, dy)}px)`;
+  }, { passive: false });
+  const end = () => {
+    if (!g || !g.dir) { g = null; return; }
+    const d = g.dir === 'x' ? g.dx : g.dy, size = g.dir === 'x' ? sheet.offsetWidth / 3 : sheet.offsetHeight / 4;
+    const v = d / Math.max(1, (g.t || g.t0) - g.t0);
+    const go = d > size || v > 0.5;
+    const dir = g.dir;
+    g = null;
+    if (go) {
+      if (reduced()) { closeSheet(); return; }
+      sheet.classList.add('springing');
+      sheet.style.transform = dir === 'x' ? 'translateX(110%)' : 'translateY(110%)';
+      setTimeout(() => { sheet.classList.remove('springing'); closeSheet(); }, 200);
+    } else {
+      sheet.classList.add('springing');
+      sheet.style.transform = '';
+      setTimeout(() => sheet.classList.remove('springing'), 240);
+    }
+  };
+  sheet.addEventListener('touchend', end);
+  sheet.addEventListener('touchcancel', end);
+})();
+
+/* ---------- Light and dark ---------- */
+const theme = () => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name=theme-color]').setAttribute('content', BAR[t]);
+  const next = t === 'dark' ? 'light' : 'dark';
+  const b = $('#themeBtn');
+  b.innerHTML = icon(next);
+  b.setAttribute('aria-label', `Switch to ${next} theme`);
+  b.title = `${next === 'dark' ? 'Dark' : 'Light'} theme`;
+}
+// Follow the phone until the person chooses
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { if (!S.set.theme) applyTheme(e.matches ? 'dark' : 'light'); });
+
+/* ---------- Search ---------- */
+function openSearch() {
+  if (S.searching) { $('#q').focus(); return; }
+  S.searching = true;
+  $('#searchRow').hidden = false;
+  $('#searchBtn').setAttribute('aria-expanded', 'true');
+  history.pushState({ search: 1 }, '');
+  $('#q').focus();
+}
+function closeSearch(fromPop) {
+  if (!S.searching) return;
+  S.searching = false; S.q = '';
+  $('#q').value = '';
+  $('#searchRow').hidden = true;
+  $('#searchBtn').setAttribute('aria-expanded', 'false');
+  if (!fromPop && history.state && history.state.search) history.back();
+  render();
+}
+$('#q').addEventListener('input', () => { S.q = $('#q').value; S.open = null; render(); });
+$('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+window.addEventListener('popstate', () => { if (S.searching) closeSearch(true); });
+
+/* ---------- Share ---------- */
+async function share() {
+  const data = { title: NAME, text: 'What’s new across Google, once a day. Free for the Google developer community.', url: APP_URL };
+  try { if (navigator.share) { await navigator.share(data); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(APP_URL); toast('Link copied'); }
+  catch { toast('Copy this link: ' + APP_URL); }
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.view) {
+    if (d.view !== S.view) freshView();
+    S.view = d.view; put('view', S.view); S.open = null; S.onlyNew = false;
+    render(); const c = $(`[data-view="${d.view}"]`); if (c) c.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    return;
+  }
+  if (d.open) { S.open = S.open === d.open ? null : d.open; renderList(); reveal(); return; }
+  if (d.more) { S.more[d.more] = !S.more[d.more]; renderList(); reveal(); return; }
+  if (d.star) {
+    const it = findItem(d.star);
+    if (!it) return;
+    if (S.stars[it.id]) { delete S.stars[it.id]; toast('Removed from Starred'); }
+    else {
+      const keep = Object.assign({}, it, { srcName: S.brief ? S.brief.srcName[it.src] : it.srcName, starredAt: now() });
+      delete keep.v; delete keep.ar;
+      S.stars[it.id] = keep; toast('Starred. It stays under Starred.');
+    }
+    put('stars', S.stars);
+    document.querySelectorAll(`[data-star="${CSS.escape(it.id)}"]`).forEach((b) => {
+      const on = !!S.stars[it.id];
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', on ? 'Starred. Tap to remove' : 'Star this update');
+    });
+    renderTracks();
+    if (S.view === 'stars') { renderList(); renderSub(); reveal(); }
+    return;
+  }
+  if (d.hide) {
+    S.set.hidden[d.hide] = !S.set.hidden[d.hide]; saveSet();
+    t.setAttribute('aria-checked', String(!S.set.hidden[d.hide]));
+    render();
+    return;
+  }
+  if (d.dismiss) { const x = get('dismissed', {}); x[d.dismiss] = 1; put('dismissed', x); renderNotices(); return; }
+  switch (d.act) {
+    case 'close': closeSheet(); break;
+    case 'retry': load(); break;
+    case 'only-new': S.onlyNew = !S.onlyNew; S.open = null; freshView(); render(); break;
+    case 'quiet': S.set.quiet = !S.set.quiet; saveSet(); t.setAttribute('aria-checked', String(S.set.quiet)); render(); break;
+    case 'welcome': openWelcome(); break;
+    case 'share': share(); break;
+    case 'install': if (S.installEvt) { S.installEvt.prompt(); S.installEvt = null; renderNotices(); } break;
+  }
+});
+$('#settingsBtn').addEventListener('click', () => openSettings());
+$('#themeBtn').addEventListener('click', () => { const t = theme() === 'dark' ? 'light' : 'dark'; S.set.theme = t; saveSet(); applyTheme(t); });
+$('#searchBtn').addEventListener('click', () => (S.searching ? closeSearch() : openSearch()));
+$('#searchClose').addEventListener('click', () => closeSearch());
+// A thumbnail that can't load leaves a plain tile
+document.addEventListener('error', (e) => { if (e.target.tagName === 'IMG') e.target.remove(); }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.searching && !sheet.open) closeSearch(); });
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installEvt = e; renderNotices(); });
+window.addEventListener('online', () => load());
+window.addEventListener('offline', renderNotices);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (now() - S.fetchedAt > 10 * 60e3) load(); else render();
+});
+
+/* ---------- Start ---------- */
+$('#searchBtn').innerHTML = icon('search');
+$('#settingsBtn').innerHTML = icon('tune');
+$('#searchIcon').innerHTML = icon('search');
+$('#searchClose').innerHTML = icon('close');
+applyTheme(theme());
+load();
+if (!get('welcomed', 0)) openWelcome();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
