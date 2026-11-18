@@ -10,7 +10,8 @@
     { id: 'Sulafat', d: 'Warm' }, { id: 'Iapetus', d: 'Clear' }, { id: 'Puck', d: 'Upbeat' },
   ];
   // Used when the list of models can't be read; the list itself is preferred, as names change often
-  const FALLBACK = { text: 'gemini-flash-latest', tts: ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'] };
+  const FALLBACK = { text: 'gemini-flash-latest', texts: ['gemini-flash-latest', 'gemini-flash-lite-latest'], tts: ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'] };
+  const MOVE_ON = /^(busy|model|slow)$/;   // this model won't do: another might
   // Nothing is left waiting for ever: a call that hasn't answered by then is given up on
   const WAIT = { models: 30000, write: 75000, speak: 90000 };
   const MAX_ITEMS = 150;    // a quarter can hold hundreds: the most important 150 go in
@@ -20,7 +21,21 @@
     short: { n: 'Headlines', words: 280, ask: 'About 280 words in all: a one-sentence opening, then 3 to 5 themes of one to three sentences each, then a one-sentence close.' },
     long: { n: 'Detailed', words: 750, ask: 'About 750 words in all: a short opening, then 5 to 8 themes, each a short paragraph saying what changed, who it matters to and anything to act on (with dates), then a short close.' },
   };
-  const STYLE = 'Read this aloud as a calm, warm, unhurried morning news briefing:\n\n';
+  // Nothing but the words is sent to be read: a direction on tone sits in the same turn as the text,
+  // and the voice sometimes reads it out as part of the brief. The tone comes from the voice and the writing.
+
+  // Writing a brief and reading one aloud have separate free allowances, and running out of one leaves the other
+  const QUOTA = {
+    any: 'You’ve used today’s free Gemini allowance for this. It resets tomorrow, or you can turn on billing in Google AI Studio.',
+    write: 'Today’s free allowance for writing briefs is used up. Reading aloud has its own, so briefs you already have can still be read. It resets tomorrow, or you can turn on billing in Google AI Studio.',
+    speak: 'Today’s free allowance for reading aloud is used up — writing has its own, so new briefs still arrive in writing. It resets tomorrow, or you can turn on billing in Google AI Studio.',
+  };
+
+  // Written for the eye, said for the ear: the name is swapped for its sound before it's read out,
+  // so the voice says "do get news" rather than spelling out the brackets.
+  const sayable = (t) => String(t == null ? '' : t)
+    .replace(/doGet\s*\(\s*news\s*\)/gi, 'do get news')
+    .replace(/\bdoGet\b/g, 'do get');
 
   /* ---------- Choosing models from the key's own list ---------- */
   const ver = (n) => { const m = /gemini-(\d+)(?:\.(\d+))?/.exec(n); return m ? +m[1] * 100 + (+m[2] || 0) : 0; };
@@ -36,9 +51,13 @@
       flash.sort((a, b) => pre(a) - pre(b) || ver(b) - ver(a) || a.length - b.length);
       text = flash[0] || all.filter((n) => /flash/.test(n) && !other.test(n))[0] || FALLBACK.text;
     }
+    // A couple of others to fall back on when the first is overloaded
+    const spare = all.filter((n) => n !== text && /flash/.test(n) && !/tts|image|live|audio|embed|vision|native|nano|thinking|learnlm|robotics|computer|gemma/.test(n));
+    spare.sort((a, b) => pre(a) - pre(b) || (/lite/.test(a) ? 1 : 0) - (/lite/.test(b) ? 1 : 0) || ver(b) - ver(a) || a.length - b.length);
+    const texts = [text].concat(spare).slice(0, 3);
     const tts = all.filter((n) => /^gemini-.*tts/.test(n));
     tts.sort((a, b) => (/lite/.test(a) ? 1 : 0) - (/lite/.test(b) ? 1 : 0) || pre(a) - pre(b) || ver(b) - ver(a));
-    return { text, tts: tts.length ? tts.slice(0, 4) : FALLBACK.tts.slice(), at: Date.now() };
+    return { text, texts, tts: tts.length ? tts.slice(0, 4) : FALLBACK.tts.slice(), at: Date.now() };
   }
 
   /* ---------- What Gemini is asked ---------- */
@@ -170,9 +189,8 @@
       e.zero = /limit:\s*0\b/.test(all);
       e.daily = e.zero || /per ?day|PerDay|daily/i.test(all);
       e.wait = retry ? Math.round(parseFloat(retry) * 1000) : 0;
-      e.message = e.daily ? 'You’ve used today’s free Gemini allowance for this. It resets tomorrow, or you can turn on billing in Google AI Studio.'
-        : 'Gemini’s free tier needs a moment. Try again in a minute.';
-    } else if (status === 403 || st === 'PERMISSION_DENIED') { e.kind = 'denied'; e.message = 'Google turned the key away here. If you restricted it, allow the Generative Language API and https://quick-sheet.github.io/*.'; }
+      e.message = e.daily ? QUOTA.any : 'Gemini’s free tier needs a moment. Try again in a minute.';
+    } else if (status === 403 || st === 'PERMISSION_DENIED') { e.kind = 'denied'; e.message = 'Google turned the key away. If you restricted it, allow the Gemini API, and check the key isn’t tied to particular IP addresses.'; }
     else if (status === 404 || st === 'NOT_FOUND') { e.kind = 'model'; e.message = 'That Gemini model isn’t available to this key.'; }
     else if (status >= 500) { e.kind = 'busy'; e.message = 'Gemini is busy just now. Try again in a minute.'; }
     else if (status === 400 && /voice|speech_?config|prebuilt|unknown name|cannot find field|invalid json payload/i.test(all)) { e.kind = 'form'; e.message = 'Gemini didn’t understand the voice settings.'; }
@@ -256,13 +274,31 @@
       }
       return pickModels({ models: list });
     }
-    async function write(model, req, signal) {
-      const body = { systemInstruction: { parts: [{ text: req.system }] }, contents: [{ role: 'user', parts: [{ text: req.user }] }],
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.4 } };
-      return textOf(await patient(() => call('models/' + encodeURIComponent(model) + ':generateContent', body, signal, wait.write), signal));
+    // Written by the first model that will: one that's overloaded, missing or slow hands on to the next, and
+    // a model that won't promise JSON on its own is asked again plainly (the reply is read either way)
+    async function write(models, req, signal) {
+      const list = (Array.isArray(models) ? models : [models]).filter(Boolean);
+      let last = null;
+      for (let i = 0; i < list.length; i++) {
+        for (let plain = 0; plain < 2; plain++) {
+          const body = { systemInstruction: { parts: [{ text: req.system }] }, contents: [{ role: 'user', parts: [{ text: req.user }] }],
+            generationConfig: Object.assign({ temperature: 0.4 }, plain ? {} : { responseMimeType: 'application/json' }) };
+          try {
+            const text = textOf(await patient(() => call('models/' + encodeURIComponent(list[i]) + ':generateContent', body, signal, wait.write), signal));
+            return { text, model: list[i], plain: !!plain };
+          } catch (e) {
+            if (e.name === 'AbortError') throw e;
+            last = e;
+            if (!plain && (e.kind === 'form' || (e.kind === 'other' && e.status === 400))) continue;   // it may simply not take that setting
+            break;
+          }
+        }
+        if (!MOVE_ON.test(last.kind)) throw last;
+      }
+      throw last;
     }
     // Two ways of naming the voice: the long-standing one, and the shorter one newer models document
-    const voiceBody = (text, voice, form) => ({ contents: [{ role: 'user', parts: [{ text: STYLE + text }] }],
+    const voiceBody = (text, voice, form) => ({ contents: [{ role: 'user', parts: [{ text: sayable(text) }] }],
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: form === 'short' ? { voiceConfig: { voice } } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } });
     async function speakWith(model, voice, text, form, signal) {
       const go = (fm) => patient(() => call('models/' + encodeURIComponent(model) + ':generateContent', voiceBody(text, voice, fm), signal, wait.speak), signal);
@@ -285,10 +321,17 @@
       }
       throw last || emptyReply('empty');
     }
-    return { models, write, speak, call };
+    // Writing a brief and reading one aloud draw on separate daily allowances, so the message says which ran out
+    const stepped = (step, p) => p.catch((e) => { if (e && e.kind === 'quota' && e.daily && QUOTA[step]) e.message = QUOTA[step]; throw e; });
+    return {
+      models,
+      write: (models, req, signal) => stepped('write', write(models, req, signal)),
+      speak: (list, voice, text, form, signal) => stepped('speak', speak(list, voice, text, form, signal)),
+      call,
+    };
   }
 
-  const Gem = { API, VOICES, LENGTHS, FALLBACK, WAIT, MAX_ITEMS, FIRST, NEXT, STYLE, pickModels, request, parseBrief, parts, wav, b64bytes, secondsOf, problem, textOf, audioOf, client };
+  const Gem = { API, VOICES, LENGTHS, FALLBACK, MOVE_ON, WAIT, MAX_ITEMS, FIRST, NEXT, QUOTA, sayable, pickModels, request, parseBrief, parts, wav, b64bytes, secondsOf, problem, textOf, audioOf, client };
   if (typeof module !== 'undefined' && module.exports) module.exports = Gem;
   else root.Gem = Gem;
 })(typeof self !== 'undefined' ? self : this);

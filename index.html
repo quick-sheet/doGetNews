@@ -451,6 +451,13 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 .ai-wait i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); opacity: .3; animation: aiwait 1.2s ease-in-out infinite; }
 .ai-wait i:nth-child(2) { animation-delay: .15s; } .ai-wait i:nth-child(3) { animation-delay: .3s; }
 @keyframes aiwait { 40% { opacity: 1; transform: translateY(-4px); } }
+/* The briefs made earlier today, so a change of filters doesn't put one out of reach */
+.ai-past { margin: 16px 0 2px; padding-top: 12px; border-top: 1px solid var(--outline-var); }
+.ai-past .small { margin: 0 8px 8px; }
+.ai-past-row { display: flex; gap: 8px; padding: 2px 4px 4px; overflow-x: auto; scrollbar-width: none; }
+.ai-past-row::-webkit-scrollbar { display: none; }
+.ai-past-row .chip { flex: 0 0 auto; max-width: 86%; }
+.ai-past-row .chip small { margin-left: 6px; padding: 1px 6px; border-radius: 8px; background: var(--card-2); color: var(--on-var); font-size: 11px; }
 .ai-note { margin-top: 14px !important; }
 .sheet h4.sub { margin: 16px 8px 8px; font-size: 13px; font-weight: 500; color: var(--on-var); }
 .sheet .small a { color: var(--primary); }
@@ -533,8 +540,8 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <div class="mini" id="mini" role="region" aria-label="Your brief" hidden></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=9"></script>
-<script src="gemini.js?v=9"></script>
+<script src="core.js?v=10"></script>
+<script src="gemini.js?v=10"></script>
 <script>
 (() => {
 'use strict';
@@ -1521,15 +1528,20 @@ const isSilence = () => aud.getAttribute('src') === SILENCE;
 const aiDay = () => String(C.dayKey(now()));
 function hashStr(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); }
 
-// Today's written briefs, by what they cover
+// Today's written briefs, by what they cover. Each keeps the words that name it, so a brief made under
+// one set of filters can be found again under another.
 function textCache() { const c = get('aitext', null); return c && c.day === aiDay() ? c : { day: aiDay(), items: {} }; }
-function keepText(key, brief) {
+function keepText(key, brief, about) {
   const c = textCache();
-  c.items[key] = { at: now(), brief };
+  c.items[key] = Object.assign({ at: now(), brief }, about || {});
   const keys = Object.keys(c.items).sort((a, b) => c.items[b].at - c.items[a].at);
   keys.slice(12).forEach((k) => delete c.items[k]);
   put('aitext', c);
 }
+// Today's briefs, newest first
+const briefsToday = () => { const c = textCache(); return Object.keys(c.items).map((k) => Object.assign({ key: k }, c.items[k])).filter((x) => x.brief && x.label).sort((a, b) => b.at - a.at); };
+// Whether a brief still has its recording on this phone
+const hasClip = (key) => get('aiclips', []).some((b) => String(b).indexOf(key + '|') === 0);
 // Today's recordings, in IndexedDB: the three most recent briefs
 const DB = (() => {
   let p = null;
@@ -1565,21 +1577,42 @@ function aiScope() {
   return when + (S.onlyNew ? ', only what’s new since the last visit' : '');
 }
 const aiLabel = (n) => [C.PERIODS.find((x) => x.id === S.period).n, C.plural(n, 'update', 'updates'), S.topics.length ? andList(topicNames()) : '', S.onlyNew ? 'new only' : ''].filter(Boolean).join(' · ');
+// Short enough for a chip: what it covers, without the count
+const aiShort = () => [C.PERIODS.find((x) => x.id === S.period).n, S.topics.length ? andList(topicNames()) : '', S.onlyNew ? 'new only' : '', AI.len === 'short' ? '' : Gm.LENGTHS[AI.len].n].filter(Boolean).join(' · ');
 
-function aiStart(fresh) {
-  if (!aiOn() || !S.brief) return;
+// What a brief of what's on screen right now would be
+function aiAsked() {
   const items = briefList(false);
-  if (!items.length) { toast('Nothing to brief on here. Try a longer stretch.'); return; }
+  if (!items.length) return null;
   const req = Gm.request(items, {
     len: AI.len, scope: aiScope(), topics: S.topics.length ? andList(topicNames()) : '',
     stage: (st) => C.STAGES[st] || '', track: (tr) => C.TRACK_NAME[tr] || '',
     src: (it) => [S.brief.srcName[it.src], C.shortDate(it.d)].filter(Boolean).join(', '),
   });
-  const key = aiDay() + '|' + AI.len + '|' + hashStr(req.used.map((x) => x.id).join(','));
+  return { req, key: aiDay() + '|' + AI.len + '|' + hashStr(req.used.map((x) => x.id).join(',')), label: aiLabel(items.length), short: aiShort() };
+}
+
+// Brief me: whatever you last read is what opens, however the filters have moved since. Making one for
+// what's on screen is a button away, and the briefs before it are a tap away.
+function aiOpen() {
+  if (!aiOn() || !S.brief) return;
+  if (run && run.state !== 'failed') { openAI(); return; }
+  const asked = aiAsked();
+  if (asked && textCache().items[asked.key]) { openPast(asked.key); return; }
+  const last = briefsToday()[0];
+  if (last) { openPast(last.key); return; }
+  aiStart();
+}
+
+function aiStart(fresh) {
+  if (!aiOn() || !S.brief) return;
+  const asked = aiAsked();
+  if (!asked) { toast('Nothing to brief on here. Try a longer stretch.'); return; }
+  const { req, key } = asked;
   if (run && run.key === key && !fresh && run.state !== 'failed') { openAI(); return; }   // the same brief: show it as it is
   stopRun();
   unlock();
-  run = { key, len: AI.len, label: aiLabel(items.length), voice: AI.voice, brief: null, parts: [], i: 0, state: 'writing', err: null, ttsErr: null, ac: new AbortController(), playing: false, waiting: false, done: false, started: now() };
+  run = { key, len: AI.len, label: asked.label, short: asked.short, voice: AI.voice, brief: null, parts: [], i: 0, state: 'writing', err: null, ttsErr: null, ac: new AbortController(), playing: false, waiting: false, done: false, started: now() };
   openAI();
   // So a slow first answer doesn't look like a frozen app
   const mine = run;
@@ -1600,12 +1633,15 @@ async function makeRun(r, req, fresh) {
     const hit = !fresh && textCache().items[r.key];
     if (hit) r.brief = hit.brief;
     else {
-      let m = await aiModels(cli, r.ac.signal), txt;
-      try { txt = await cli.write(m.text, req, r.ac.signal); }
-      catch (e) { if (e.kind !== 'model') throw e; m = await aiModels(cli, r.ac.signal, true); txt = await cli.write(m.text, req, r.ac.signal); }
-      r.brief = Gm.parseBrief(txt, req.used);
+      let m = await aiModels(cli, r.ac.signal), got;
+      const list = (x) => (x.texts && x.texts.length ? x.texts : [x.text]);
+      try { got = await cli.write(list(m), req, r.ac.signal); }
+      catch (e) { if (e.kind !== 'model') throw e; m = await aiModels(cli, r.ac.signal, true); got = await cli.write(list(m), req, r.ac.signal); }
+      // Whichever model answered goes first next time
+      if (got.model !== list(m)[0]) { AI.models.text = got.model; AI.models.texts = [got.model].concat(list(m).filter((x) => x !== got.model)); saveAI(); paintSet(); }
+      r.brief = Gm.parseBrief(got.text, req.used);
       if (!r.brief) { const e = new Error('Gemini’s brief came back in a shape the app couldn’t read. Try again.'); e.kind = 'shape'; throw e; }
-      keepText(r.key, r.brief);
+      keepText(r.key, r.brief, { label: r.label, short: r.short, len: r.len, voice: r.voice });
     }
     if (run !== r) return;
     r.parts = Gm.parts(r.brief).map((x) => Object.assign(x, { state: 'wait', url: '' }));
@@ -1618,9 +1654,40 @@ async function makeRun(r, req, fresh) {
     paintAI(true);
   }
 }
+// Opens a brief made earlier today, from what's kept on this phone. Nothing is asked of Gemini: one whose
+// recording has gone reads as text until it's asked for out loud.
+async function openPast(key) {
+  const c = textCache().items[key];
+  if (!c || !c.brief) { aiStart(); return; }
+  stopRun();
+  unlock();
+  const r = run = { key, len: c.len || AI.len, label: c.label, short: c.short, voice: c.voice || AI.voice, brief: c.brief, parts: [], i: 0,
+    state: 'ready', err: null, ttsErr: null, ac: new AbortController(), playing: false, waiting: false, done: false, started: now(), again: true };
+  r.parts = Gm.parts(r.brief).map((x) => Object.assign(x, { state: 'wait', url: '' }));
+  openAI();
+  const base = clipBase(r);
+  for (let i = 0; i < r.parts.length; i++) {
+    const hit = await DB.get(base + '#' + i);
+    if (run !== r) return;
+    if (!hit || !hit.blob) break;
+    r.parts[i].url = URL.createObjectURL(hit.blob);
+    r.parts[i].state = 'ready';
+  }
+  r.silent = r.parts[0].state !== 'ready';
+  paintAI();
+  if (!r.silent) playPart(0);   // it was asked for: it plays, as a new one does
+}
+// Asked for out loud: the parts already kept are found at once, and only the missing ones cost anything
+function recordRest(r) {
+  if (r.recording || !aiOn()) return;
+  r.recording = true;
+  r.silent = false;
+  record(r, Gm.client(AI.key)).then(() => { if (run === r) r.recording = false; });
+}
+const clipBase = (r) => r.key + '|' + r.voice + '|' + hashStr(JSON.stringify(r.brief));   // a new brief of the same updates gets a new recording
 // Each part is recorded in turn, the next while the one before plays
 async function record(r, cli) {
-  const base = r.key + '|' + r.voice + '|' + hashStr(JSON.stringify(r.brief));   // a new brief of the same updates gets a new recording
+  const base = clipBase(r);
   for (let i = 0; i < r.parts.length; i++) {
     if (run !== r) return;
     const p = r.parts[i];
@@ -1672,7 +1739,10 @@ function playPart(i) {
   if (!r || !r.parts[i]) return;
   r.i = i; r.done = false;
   const p = r.parts[i];
-  if (p.state !== 'ready') { r.waiting = p.state !== 'failed'; if (!isSilence()) aud.pause(); paintAI(); return; }
+  if (p.state !== 'ready') {
+    if (r.again && p.state === 'wait') recordRest(r);   // an earlier brief, asked for out loud
+    r.waiting = p.state !== 'failed'; if (!isSilence()) aud.pause(); paintAI(); return;
+  }
   r.waiting = false;
   aud.src = p.url;
   aud.playbackRate = AI.rate || 1;
@@ -1737,8 +1807,10 @@ function statusHtml() {
     const e = r.err || {};
     const fix = /key|denied/.test(e.kind) ? `<button class="ib sl tonal" type="button" data-act="ai-settings" aria-label="Open Settings" title="Settings">${icon('tune')}</button><span class="hint">Settings</span>`
       : `<button class="ib sl tonal" type="button" data-act="ai-new" aria-label="Try again" title="Try again">${icon('refresh')}</button><span class="hint">Try again</span>`;
-    return `<span class="err">${esc(e.message || 'Something went wrong.')}</span><span class="acts">${fix}</span>`;
+    const earlier = briefsToday().length ? ' Today’s earlier briefs are below.' : '';
+    return `<span class="err">${esc((e.message || 'Something went wrong.') + earlier)}</span><span class="acts">${fix}</span>`;
   }
+  if (r.again && r.silent) return 'Read earlier today. Its recording has gone, so press play to have it read again.';
   if (r.state === 'writing') return `${spin}Gemini is writing your brief…` + (now() - r.started > 15000 ? '<small>Still going. The first one of the day can take a minute.</small>' : '');
   if (r.state === 'recording') return `${spin}Recording it in ${esc(r.voice)}’s voice…`;
   const failedAt = r.parts.findIndex((p) => p.state === 'failed');
@@ -1749,7 +1821,7 @@ function statusHtml() {
   return `Part ${r.i + 1} of ${r.parts.length}${making && !r.ttsErr ? ' · recording the rest' : ''}`;
 }
 function ctlHtml() {
-  const r = run, ready = !!(r && r.parts.some((p) => p.state === 'ready'));
+  const r = run, ready = !!(r && (r.parts.some((p) => p.state === 'ready') || (r.again && r.silent)));
   const dis = ready ? '' : ' disabled', playing = !!(r && r.playing);
   const rate = AI.rate || 1;
   return `<button class="ib sl" type="button" data-act="ai-prev" aria-label="Back" title="Back"${dis}>${icon('prev')}</button>
@@ -1772,6 +1844,25 @@ function textHtml() {
     ${b.outro ? sec(-2, `<p>${esc(b.outro)}</p>`) : ''}`;
 }
 const lenChips = (attr) => Object.keys(Gm.LENGTHS).map((k) => `<button class="chip sl" type="button" ${attr}="${k}" aria-pressed="${AI.len === k}">${icon('check')}${esc(Gm.LENGTHS[k].n)}</button>`).join('');
+// The other briefs made today, so changing the filters doesn't put one out of reach
+function pastHtml() {
+  const mine = run && run.key;
+  const rest = briefsToday().filter((x) => x.key !== mine).slice(0, 5);
+  if (!rest.length) return '';
+  return `<div class="ai-past"><p class="small">Earlier today</p><div class="ai-past-row">${rest.map((x) =>
+    `<button class="chip sl" type="button" data-aipast="${esc(x.key)}">${esc(x.short || x.label)}${hasClip(x.key) ? '' : '<small>text</small>'}</button>`).join('')}</div></div>`;
+}
+// Whether what's open is a brief of what's on screen now
+function aiIsNow() {
+  const r = run, asked = aiAsked();
+  return !!(r && asked && r.key === asked.key);
+}
+// One button, named for what it would do: catch up with the filters, or write this one again
+function makeBtn() {
+  const now = aiIsNow();
+  const lbl = now ? 'Make a new one' : 'Brief what’s on screen';
+  return `<button class="ib sl tonal" type="button" data-act="${now ? 'ai-new' : 'ai-now'}" aria-label="${esc(lbl)}" title="${esc(lbl)}">${icon(now ? 'refresh' : 'spark')}</button><span class="hint">${esc(lbl)}</span>`;
+}
 function openAI() {
   const r = run;
   if (!r) return;
@@ -1781,8 +1872,9 @@ function openAI() {
     <div class="ai-ctl" id="aiCtl">${ctlHtml()}</div>
     <p class="ai-status" id="aiStatus" role="status">${statusHtml()}</p>
     <div class="ai-text" id="aiText">${textHtml()}</div>
+    ${pastHtml()}
     <p class="small ai-note">Written and read by Gemini with your own key. It can get things wrong, so check the updates it points to.</p>
-    <div class="acts"><button class="ib sl tonal" type="button" data-act="ai-new" aria-label="Make a new brief" title="Make a new one">${icon('refresh')}</button><span class="hint">Make a new one</span></div>
+    <div class="acts">${makeBtn()}</div>
   </div>`, 'ai');
   r.painted = !!r.brief;
   paintNow();
@@ -2052,6 +2144,7 @@ document.addEventListener('click', (e) => {
   if (d.voice) { AI.voice = d.voice; saveAI(); paintSet(); return; }
   if (d.setlen) { AI.len = d.setlen; saveAI(); paintSet(); return; }
   if (d.ailen) { if (d.ailen !== AI.len) { AI.len = d.ailen; saveAI(); aiStart(); } return; }
+  if (d.aipast) { openPast(d.aipast); return; }
   switch (d.act) {
     case 'close': closeSheet(); break;
     case 'retry': load(); break;
@@ -2068,7 +2161,8 @@ document.addEventListener('click', (e) => {
     case 'welcome': openWelcome(); break;
     case 'share': share(); break;
     case 'install': if (S.installEvt) { S.installEvt.prompt(); S.installEvt = null; renderNotices(); } break;
-    case 'ai': aiStart(); break;
+    case 'ai': aiOpen(); break;
+    case 'ai-now': aiStart(); break;
     case 'ai-new': aiStart(true); break;
     case 'ai-open': openAI(); break;
     case 'ai-play': aiToggle(); break;
