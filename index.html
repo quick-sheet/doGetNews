@@ -662,7 +662,15 @@ function toast(msg) {
    separate Apps Script folds into running totals and then throws away. Nothing identifies anyone, nothing
    is kept per visitor, and no two beacons are ever joined up. An empty PULSE_URL sends nothing. */
 const pulse = (() => {
-  if (!PULSE_URL) return { on: false, link() {} };
+  // Opening the app at ?pulse=off keeps this browser out of the count for good, and ?pulse=on puts it
+  // back. It is a switch for whoever runs the app, so nothing in the interface mentions it; the line in
+  // the footer about counting visits goes while it is off, which is how you can tell it took.
+  const sw = (/[?&]pulse=(on|off)\b/.exec(location.search) || [])[1];
+  if (sw) {
+    put('nopulse', sw === 'off' ? 1 : 0);
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* the address stays as it is */ }
+  }
+  if (!PULSE_URL || get('nopulse', 0)) return { on: false, link() {} };
   const send = (b) => {
     b.k = 'dgn1';
     try { navigator.sendBeacon(PULSE_URL, new Blob([JSON.stringify(b)], { type: 'text/plain;charset=UTF-8' })); }
