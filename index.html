@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>doGet(news)</title>
-<meta name="description" content="What’s new across Google, once a day.">
+<meta name="description" content="What’s new across Google, twice a day.">
 <meta name="theme-color" content="#131314">
 <script>
   // Light or dark before anything paints: the saved choice, else the phone's own setting
@@ -23,7 +23,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="doGet(news)">
 <meta property="og:title" content="doGet(news)">
-<meta property="og:description" content="What’s new across Google, once a day. Free for the Google developer community.">
+<meta property="og:description" content="What’s new across Google, twice a day. Free for the Google developer community.">
 <meta property="og:image" content="https://quick-sheet.github.io/doGetNews/icon-512.png?v=4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,7 +69,9 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
+/* Long unbroken words (API method paths, resource names, version strings, links) wrap rather than widen the page */
+.item, .hero, .sheet, .lc, .empty, .pulse, .notice { overflow-wrap: anywhere; }
 body {
   margin: 0; background: var(--bg); color: var(--on); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
   padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); min-height: 100vh; overflow-x: clip;
@@ -152,20 +154,42 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .searching .wrap { padding-top: calc(env(safe-area-inset-top, 0px) + 140px); }
 
 /* Bottom navigation bar (Material 3), frosted to match the header */
-.navbar { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--pill); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); border-top: 1px solid var(--line); transition: background-color .4s; }
-.navbar-in { display: flex; width: 100%; max-width: 36rem; }
-.nb { flex: 1; min-width: 0; height: var(--navbar); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: .01em; color: var(--on-var); }
-.nb .ind { position: relative; width: 64px; height: 32px; display: grid; place-items: center; border-radius: 16px; }
+/* The bottom bar floats like the top pill, and draws in to just its icons as you read down the page */
+.navbar { position: fixed; z-index: 40; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: flex; justify-content: center; pointer-events: none; padding: 0 max(12px, env(safe-area-inset-left, 0px)); }
+.navbar-in { pointer-events: auto; max-width: 100%; display: flex; align-items: center; gap: 2px; padding: 6px; background: var(--pill); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); transition: background-color .4s; }
+.nb { flex: none; width: 74px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 999px; font-size: 12px; line-height: 15px; font-weight: 500; letter-spacing: .01em; color: var(--on-var); transition: width .45s var(--glide), height .45s var(--glide); }
+.nb .ind { position: relative; width: 52px; height: 28px; display: grid; place-items: center; border-radius: 14px; transition: width .45s var(--glide); }
 .nb .ind::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--secondary-c); transform: scaleX(.4); opacity: 0; transition: transform .35s var(--glide), opacity .2s; }
 .nb .ind::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0; transition: opacity .15s; }
 .nb:active .ind::after { opacity: .12; }
 .nb svg.i { position: relative; }
+/* The label folds away rather than blinking out */
+.nb .lbl { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .45s var(--glide); }
+.nb .lbl > span { min-height: 0; overflow: hidden; opacity: 1; transition: opacity .3s; }
+.navbar.tight .nb { width: 52px; height: 40px; }
+.navbar.tight .nb .ind { width: 46px; }
+.navbar.tight .nb .lbl { grid-template-rows: 0fr; }
+.navbar.tight .nb .lbl > span { opacity: 0; transition-duration: .18s; }
 .nb[aria-current="page"] { color: var(--on); font-weight: 600; }
 .nb[aria-current="page"] .ind { color: var(--on-secondary-c); }
 .nb[aria-current="page"] .ind::before { transform: none; opacity: 1; }
 .nb .on-i { display: none; }
 .nb[aria-current="page"] .on-i { display: block; }
 .nb[aria-current="page"] .off-i { display: none; }
+
+/* On the way back up, the time frame and Topics ride in under the pill, so they're reachable anywhere */
+.filt { pointer-events: auto; width: min(36rem - 32px, 100%); max-width: 100%; display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0;
+  transition: grid-template-rows .5s var(--glide), margin-top .5s var(--glide), opacity .3s; }
+.filt > div { min-height: 0; overflow: hidden; }
+.filt.show { grid-template-rows: 1fr; margin-top: 8px; opacity: 1; }
+.filt-row { display: flex; align-items: center; gap: 8px; height: 50px; padding: 0 6px 0 7px; background: var(--pill); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); border: 1px solid var(--line); border-radius: 25px; box-shadow: var(--shadow); }
+.fchips { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.fchips::-webkit-scrollbar { display: none; }
+.fchip { flex: none; height: 36px; padding: 0 12px; border-radius: 18px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; color: var(--on-var); box-shadow: inset 0 0 0 1px var(--outline-var); transition: background-color .3s var(--ease), color .3s var(--ease), box-shadow .3s var(--ease); }
+.fchip .n { font-size: 12px; opacity: .7; }
+.fchip[aria-checked="true"] { background: var(--secondary-c); color: var(--on-secondary-c); box-shadow: none; }
+.fchip[aria-checked="true"] .n { opacity: 1; }
+.filt .tbtn { flex: none; height: 36px; padding: 0 10px 0 10px; }
 .badge { position: absolute; top: -2px; left: calc(50% + 8px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--primary); color: var(--on-primary); font-size: 11px; line-height: 16px; font-weight: 600; text-align: center; }
 
 /* Notices */
@@ -259,7 +283,7 @@ svg.i { width: 24px; height: 24px; fill: currentColor; flex: none; display: bloc
 .group > :last-child { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
 .item.open { border-radius: 20px; margin: 6px 0; }
 .item-row { display: flex; align-items: flex-start; }
-.item-main { flex: 1; min-width: 0; text-align: left; padding: 14px 4px 14px 16px; display: grid; gap: 4px; border-radius: inherit; }
+.item-main { flex: 1; min-width: 0; text-align: left; padding: 14px 4px 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; border-radius: inherit; }
 .item-title { font-weight: 500; font-size: 16px; line-height: 22px; }
 .item-sum { font-size: 14px; line-height: 20px; color: var(--on-var); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item.open .item-sum { display: none; }
@@ -399,15 +423,71 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
   box-shadow: 0 3px 8px rgba(0, 0, 0, .2); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* Brief me: Gemini writes and reads a briefing, on the person's own key */
+.ai-btn { margin-left: auto; background: var(--primary-c); color: var(--on-primary-c); box-shadow: none; }
+.ai-btn svg.i { width: 18px; height: 18px; }
+.ai .ai-scope { margin: 2px 8px 10px; }
+.ai-len { display: flex; gap: 8px; padding: 0 4px; }
+.ai-ctl { display: flex; align-items: center; gap: 4px; margin: 14px 0 4px; }
+.ai-ctl .ib[disabled], .mini .ib[disabled] { opacity: .38; pointer-events: none; }
+.ai-time { flex: 1; min-width: 0; margin-left: 6px; font-size: 13px; color: var(--on-var); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-rate { height: 32px; min-width: 48px; padding: 0 10px; border-radius: 16px; font-size: 13px; font-weight: 500; color: var(--on-var); box-shadow: inset 0 0 0 1px var(--outline-var); }
+.sheet .ai-status { margin: 6px 8px 0; min-height: 22px; font-size: 14px; }
+.ai-status .err { color: var(--on-error-c); background: var(--error-c); display: block; padding: 10px 14px; border-radius: 14px; }
+.ai-status .acts { margin-top: 8px; }
+.ai-text { margin: 8px 0 4px; }
+.sheet .ai-title { margin: 14px 8px 8px; font-size: 20px; line-height: 26px; font-weight: 500; color: var(--on); }
+.ai-sec { margin: 0 0 4px; padding: 6px 12px; border-radius: 16px; transition: background-color .35s var(--ease); }
+.ai-sec h4 { margin: 4px 0 2px; font-size: 14px; font-weight: 500; color: var(--primary); }
+.sheet .ai-sec p { margin: 2px 0 4px; color: var(--on); font-size: 16px; line-height: 24px; }
+.ai-sec.now { background: var(--card); box-shadow: inset 3px 0 0 var(--primary); }
+:root[data-theme="dark"] .ai-sec.now { background: var(--card-2); }
+.ai-refs { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 4px; }
+.ai-ref { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 10px; border-radius: 10px; text-align: left; font-size: 13px; line-height: 18px; color: var(--primary); }
+.ai-ref svg.i { width: 16px; height: 16px; }
+.ai-ref span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ai-wait { display: flex; gap: 6px; padding: 18px 12px; }
+.ai-wait i { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); opacity: .3; animation: aiwait 1.2s ease-in-out infinite; }
+.ai-wait i:nth-child(2) { animation-delay: .15s; } .ai-wait i:nth-child(3) { animation-delay: .3s; }
+@keyframes aiwait { 40% { opacity: 1; transform: translateY(-4px); } }
+.ai-note { margin-top: 14px !important; }
+.sheet h4.sub { margin: 16px 8px 8px; font-size: 13px; font-weight: 500; color: var(--on-var); }
+.sheet .small a { color: var(--primary); }
+.item.flash { animation: flash 1.6s var(--ease); }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--primary); } }
+/* The brief's mini player, above the navigation bar while the sheet is closed */
+.mini { position: fixed; z-index: 45; left: 0; right: 0; margin: 0 auto; bottom: calc(var(--navbar) + 10px + env(safe-area-inset-bottom, 0px)); width: min(36rem, calc(100% - 24px));
+  display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 28px; background: var(--primary-c); color: var(--on-primary-c); box-shadow: var(--shadow); animation: rise .3s var(--ease); }
+.mini[hidden] { display: none; }
+.mini .ib { color: inherit; }
+.mini-txt { flex: 1; min-width: 0; text-align: left; padding: 4px 8px; border-radius: 16px; line-height: 18px; }
+.mini-txt b { display: block; font-size: 14px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.mini-txt small { display: block; font-size: 12px; opacity: .8; }
+.mini-on .to-top.show { transform: translateY(-68px); }
+.mini-on .toast { bottom: calc(var(--navbar) + 80px + env(safe-area-inset-bottom)); }
+
+/* Opening the installed app: the phone's still launch image hands over to the cloud bobbing, as Learn's loader
+   does, then fades into the brief */
+.boot { position: fixed; inset: 0; z-index: 100; display: grid; place-content: center; justify-items: center; gap: 18px; background: var(--bg); transition: opacity .45s var(--ease); }
+.boot img { height: 84px; width: auto; animation: bob 2.4s ease-in-out infinite; }
+.boot .wordmark { font-size: 22px; }
+.boot.gone { opacity: 0; pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .rv { opacity: 1; transform: none; }
   .spinner { animation: spin 1.6s linear infinite !important; }
-  .loading img, .learn-load img { animation: breathe 2.4s ease-in-out infinite !important; }   /* still, just a slow fade */
+  .loading img, .learn-load img, .boot img { animation: breathe 2.4s ease-in-out infinite !important; }   /* still, just a slow fade */
+  .boot { transition: opacity .3s !important; }
 }
 </style>
 </head>
 <body>
+<div class="boot" id="boot" aria-hidden="true"><img src="logo.png" alt="" width="132" height="84"><span class="wordmark">doGet<span class="par">(</span><span class="g1">n</span><span class="g2">e</span><span class="g3">w</span><span class="g4">s</span><span class="par">)</span></span></div>
+<script>
+  // Only when opened as the installed app, where the phone shows its own still launch image first
+  (function () { try { if (!(matchMedia('(display-mode: standalone)').matches || navigator.standalone)) document.getElementById('boot').remove(); } catch (e) { document.getElementById('boot').remove(); } })();
+</script>
 <header class="nav" id="nav">
   <div class="pill" id="pill">
     <button class="logo-btn sl" id="logoBtn" type="button" aria-label="doGet(news). Back to the top">
@@ -423,6 +503,7 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
       </div>
     </div>
   </div>
+  <div class="filt" id="pillFilters"><div><div class="filt-row" id="pillFiltersIn"></div></div></div>
   <div class="drop" id="searchRow" role="search" hidden>
     <span id="searchIcon"></span>
     <label class="vh" for="q">Search three months of updates, products and videos</label>
@@ -448,9 +529,11 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
   <div class="learn-card" id="learnCard" hidden></div>
 </div>
 <dialog class="sheet" id="sheet" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody" tabindex="-1"></div></dialog>
+<div class="mini" id="mini" role="region" aria-label="Your brief" hidden></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=6"></script>
+<script src="core.js?v=9"></script>
+<script src="gemini.js?v=9"></script>
 <script>
 (() => {
 'use strict';
@@ -467,6 +550,9 @@ const DD_URL = 'https://quick-sheet.github.io/DailyDrift/';
 const DD_ORIGIN = new URL(DD_URL).origin;
 const DD_WAIT = 8000;   // if Daily Drift hasn't said hello by then, the plain card takes over
 const BAR = { light: '#F0F4F9', dark: '#131314' };
+// The anonymous pulse: the web-app address of the separate counting script (apps-script-pulse/Pulse.gs).
+// Empty means the app sends nothing at all.
+const PULSE_URL = 'https://script.google.com/macros/s/AKfycbzs1P1HO7nXv6YZ3sYcKeAedLLULPTaR2EicB2Bo73Seyv46QzW2WKG5TEs7r8z8NXVcA/exec';
 
 const VIEWS = [{ id: 'brief', n: 'Brief', ic: 'news' }, { id: 'watch', n: 'Watch', ic: 'watch' }, { id: 'learn', n: 'Learn', ic: 'school', opens: true }, { id: 'stars', n: 'Starred', ic: 'starOff', on: 'starOn' }];
 
@@ -530,6 +616,12 @@ const P = {
   filterOff: 'M14.76 12 20 5.3A1 1 0 0 0 19.21 4H6.76zM2.81 2.81 1.39 4.22 10 13v6a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2.17l5.78 5.78 1.41-1.41z',
   school: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3 1 9l11 6 9-4.91V17h2V9L12 3z',
   back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
+  spark: 'M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z',
+  pause: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z',
+  next: 'M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z',
+  prev: 'M6 6h2v12H6zm3.5 6l8.5 6V6z',
+  del: 'M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+  key: 'M12.65 10A5.99 5.99 0 0 0 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
 };
 const icon = (k, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[k]}"/></svg>`;
 const LOGO = '<img class="logo" src="logo.png" alt="" width="88" height="56">';
@@ -557,10 +649,54 @@ function toast(msg) {
   }, Math.max(2600, msg.length * 55));
 }
 
+/* ---------- The anonymous pulse ----------
+   Counts visits, never people. Two fire-and-forget beacons — one on opening, one on leaving — which a
+   separate Apps Script folds into running totals and then throws away. Nothing identifies anyone, nothing
+   is kept per visitor, and no two beacons are ever joined up. An empty PULSE_URL sends nothing. */
+const pulse = (() => {
+  if (!PULSE_URL) return { on: false, link() {} };
+  const send = (b) => {
+    b.k = 'dgn1';
+    try { navigator.sendBeacon(PULSE_URL, new Blob([JSON.stringify(b)], { type: 'text/plain;charset=UTF-8' })); }
+    catch (e) { /* a count is never worth an error */ }
+  };
+  const ua = navigator.userAgent || '';
+  const dev = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+    : /Macintosh|Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux|CrOS/.test(ua) ? 'Linux' : 'Other';
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { tz = ''; }
+  send({ t: 'open', dev, tz, lang: navigator.language || '', pwa: standalone });
+  // On leaving: how long the visit lasted and which sites were opened from it, both as plain tallies
+  let at = Date.now(), hosts = [], first = true;
+  const end = () => {
+    const dur = Math.round((Date.now() - at) / 1000);
+    if (!first && dur < 2 && !hosts.length) return;   // flicking away and back is not a visit
+    send({ t: 'end', dur, first, links: hosts });
+    first = false; at = Date.now(); hosts = [];
+  };
+  addEventListener('pagehide', end);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') end(); });
+  return { on: true, link: (url) => { const h = C.hostOf(url); if (h && hosts.length < 8 && hosts.indexOf(h) < 0) hosts.push(h); } };
+})();
+document.addEventListener('click', (e) => {
+  const a = e.target && e.target.closest && e.target.closest('a[href^="http"]');
+  if (a) pulse.link(a.href);
+}, true);
+
 /* ---------- Loading the brief, then the rest of the three months ---------- */
+// The opening cloud stays a moment (a bob's worth) so it reads as a hand-over, never more than a few seconds
+const BOOT_MIN = 1000, BOOT_MAX = 6000;
+function bootDone() {
+  const b = $('#boot');
+  if (!b || b.dataset.going) return;
+  b.dataset.going = '1';
+  setTimeout(() => { b.classList.add('gone'); setTimeout(() => b.remove(), 500); }, Math.max(0, BOOT_MIN - performance.now()));
+}
+setTimeout(bootDone, BOOT_MAX);
 async function load() {
   S.loading = !S.brief;
   if (S.loading) render();
+  else bootDone();   // the saved brief is already showing
   try {
     const r = await fetch('brief.json', { cache: 'no-cache' });
     if (r.status === 404) { S.missing = true; S.brief = null; }
@@ -580,6 +716,7 @@ async function load() {
   S.fetchedAt = now();
   S.loading = false;
   render();
+  bootDone();
   // Next time, "new" means anything that arrived after this brief
   if (S.brief) put('seenAt', S.brief.latestRun || S.brief.generated);
   // The older ten weeks follow once the page has settled
@@ -687,6 +824,11 @@ function renderNotices() {
 }
 
 // Today, Yesterday, This week, This month, This quarter: built once, then updated in place so the fill can glide
+function periodCounts() {
+  const base = S.view === 'watch' ? mediaAll().filter((x) => C.inTopics(x, S.topics))
+    : C.filter(S.brief.items, { topics: S.topics, quiet: S.set.quiet, onlyNew: S.onlyNew, since: S.since });
+  return C.periodCounts(base, now());
+}
 function renderPeriod() {
   const el = $('#period');
   if (!S.brief || S.view === 'stars' || searchingNow()) { el.hidden = true; return; }
@@ -695,9 +837,7 @@ function renderPeriod() {
     el.innerHTML = `<span class="seg-ind" aria-hidden="true"></span>` + C.PERIODS.map((p) =>
       `<button class="seg" type="button" role="radio" data-period="${p.id}"><span class="n num"></span><span class="l">${esc(p.n)}</span></button>`).join('');
   }
-  const base = S.view === 'watch' ? mediaAll().filter((x) => C.inTopics(x, S.topics))
-    : C.filter(S.brief.items, { topics: S.topics, quiet: S.set.quiet, onlyNew: S.onlyNew, since: S.since });
-  const counts = C.periodCounts(base, now());
+  const counts = periodCounts();
   const what = S.view === 'watch' ? ['video or article', 'videos and articles'] : ['update', 'updates'];
   C.PERIODS.forEach((p, i) => {
     const b = el.querySelector(`[data-period="${p.id}"]`), on = S.period === p.id;
@@ -749,7 +889,7 @@ function renderHero() {
   if (S.loading) { el.innerHTML = `<div class="loading" role="status"><img src="logo.png" alt="" width="88" height="56"><p>Getting today’s brief…</p></div>`; return; }
   if (S.missing) {
     el.innerHTML = `<h1 class="empty-title">The first brief is on its way</h1>
-      <p class="empty-body">${WM} publishes a new brief once a day, at about 7am UK time. Check back after that.</p>`;
+      <p class="empty-body">${WM} publishes a new brief twice a day, at about 7am and 7pm UK time. Check back after the next one.</p>`;
     return;
   }
   if (S.failed || !S.brief) {
@@ -764,7 +904,7 @@ function renderHero() {
     const when = { today: 'today yet', yesterday: 'from yesterday', week: 'this week yet', month: 'this month yet', quarter: 'this quarter yet' }[S.period];
     const tip = S.onlyNew ? 'Nothing new since your last visit.'
       : S.period !== 'quarter' ? 'Try a longer stretch, like This week or This quarter.'
-      : S.topics.length ? 'Add another topic, or clear them to see everything.' : 'The next brief lands at about 7am UK time.';
+      : S.topics.length ? 'Add another topic, or clear them to see everything.' : `The next brief lands at ${C.nextRun(now())}.`;
     el.innerHTML = `<h1 class="empty-title">Nothing ${S.topics.length ? 'for these topics ' : ''}${esc(when)}</h1>
       <p class="empty-body">${esc(tip)}</p>
       ${S.topics.length && S.period === 'quarter' ? `<div class="acts"><button class="ib sl tonal" type="button" data-act="topics" aria-label="Choose topics" title="Choose topics">${icon('filter')}</button><span class="hint">Choose topics</span></div>` : ''}`;
@@ -786,6 +926,22 @@ function renderHero() {
 }
 
 // Topics button, "New only" and a line about what's showing. Hidden while searching and in Starred.
+// The time frame and Topics, small enough to ride in under the pill on the way back up
+function renderPillFilters() {
+  const el = $('#pillFiltersIn');
+  if (!filtersFit()) { el.innerHTML = ''; return; }
+  const counts = periodCounts();
+  const chips = C.PERIODS.map((p) => {
+    const on = S.period === p.id;
+    return `<button class="fchip sl" type="button" role="radio" data-period="${p.id}" aria-checked="${on}" tabindex="${on ? 0 : -1}">${esc(p.n)}<span class="n num">${counts[p.id]}</span></button>`;
+  }).join('');
+  const n = S.topics.length;
+  el.innerHTML = `<div class="fchips" role="radiogroup" aria-label="Show updates from">${chips}</div>`
+    + `<button class="tbtn sl${n ? ' on' : ''}" type="button" data-act="topics" aria-haspopup="dialog" aria-label="${esc('Topics: ' + (n ? andList(topicNames()) : 'all'))}">${icon('filter')}<span class="tc num">${n ? n : 'All'}</span></button>`;
+  // The chosen stretch brought into view sideways, without nudging the page
+  const on = el.querySelector('[aria-checked="true"]'), box = el.querySelector('.fchips');
+  if (on && box) box.scrollLeft = Math.max(0, on.offsetLeft - 8);
+}
 function renderBar() {
   const el = $('#bar');
   if (!S.brief || S.view === 'stars' || searchingNow()) { el.innerHTML = ''; return; }
@@ -800,10 +956,13 @@ function renderBar() {
     else if (fresh) {
       txt = `${fresh} new since your last visit.`;
       chip = `<button class="chip sl" type="button" data-act="only-new" aria-pressed="${S.onlyNew}">${icon('check')}${S.onlyNew ? '' : '<span class="new-dot" aria-hidden="true"></span>'}New only</button>`;
-    } else txt = 'Nothing new since your last visit. The next brief lands at about 7am UK time.';
+    } else txt = `Nothing new since your last visit. The next brief lands at ${C.nextRun(now())}.`;
   } else txt = 'Videos from Google’s official channels and articles from the Google Cloud Community, newest first.';
   if (n) txt = `Showing ${andList(names)}. ${txt}`;
-  el.innerHTML = `<div class="bar">${btn}${chip}</div><div class="pulse"><p>${esc(txt)}</p></div>`;
+  // Brief me: only with a Gemini key saved, and only when there's something to brief on
+  const shown = S.view === 'brief' && aiOn() ? briefList(false).length : 0;
+  const ai = shown ? `<button class="tbtn sl ai-btn" type="button" data-act="ai" aria-haspopup="dialog" aria-label="${esc('Brief me: Gemini writes and reads you a briefing of these ' + C.plural(shown, 'update', 'updates'))}">${icon('spark')}Brief me</button>` : '';
+  el.innerHTML = `<div class="bar">${btn}${chip}${ai}</div><div class="pulse"><p>${esc(txt)}</p></div>`;
 }
 
 function itemHtml(it) {
@@ -925,21 +1084,22 @@ function renderNav() {
     const ic = v.on ? icon(v.ic, 'off-i') + icon(v.on, 'on-i') : icon(v.ic);
     // Learn opens over the app rather than being a page of its own
     const act = v.opens ? `data-act="learn" aria-haspopup="dialog"` : `data-view="${v.id}"${cur ? ' aria-current="page"' : ''}`;
-    return `<button class="nb" type="button" ${act} aria-label="${esc(v.n + (v.id === 'stars' && n ? ', ' + n : ''))}"><span class="ind">${ic}${badge}</span><span>${esc(v.n)}</span></button>`;
+    return `<button class="nb" type="button" ${act} aria-label="${esc(v.n + (v.id === 'stars' && n ? ', ' + n : ''))}"><span class="ind">${ic}${badge}</span><span class="lbl"><span>${esc(v.n)}</span></span></button>`;
   }).join('');
 }
 
 const me = () => (LINKEDIN ? `<a ${attrs(LINKEDIN)} aria-label="G. Sondhi on LinkedIn">G. Sondhi</a>` : 'G. Sondhi');
 function renderFoot() {
   $('#foot').innerHTML = `<div><p>Made by ${me()}. Free for the Google developer community.</p>
-    <p>Independent and not affiliated with Google. Every update links to Google’s own page.</p>
-    <p>${S.brief ? esc(C.updatedTxt(S.brief.generated, now())) + '. ' : ''}A new brief arrives once a day, at about 7am UK time, and keeps three months.</p></div>
+    <p>Independent and not affiliated with Google. Every update links to Google’s own page.${pulse.on ? ' Counts anonymous visits — no profiles, nothing personal.' : ''}</p>
+    <p>${S.brief ? esc(C.updatedTxt(S.brief.generated, now())) + '. ' : ''}A new brief arrives twice a day, at about 7am and 7pm UK time, and keeps three months.</p></div>
     <button class="ib sl" type="button" data-act="share" aria-label="Share ${NAME}" title="Share">${icon('share')}</button>`;
 }
 
 function render() {
   renderNotices();
   renderPeriod();
+  if ($('#pillFilters').classList.contains('show')) renderPillFilters();   // only while it's up: it counts the same as the page's own
   renderHero();
   renderBar();
   renderList();
@@ -981,11 +1141,25 @@ function freshView() { seen.forEach((k) => { if (k !== 'hero') seen.delete(k); }
 // Open: the tools glide out of the pill. They tuck away as you scroll down and come back as you scroll up,
 // or when you tap the pill. They stay out while searching, at the top of the page, and with reduced motion.
 const pill = $('#pill');
+const filtersFit = () => !!S.brief && S.view !== 'stars' && !searchingNow() && !S.searching;
+// The page's own selector is still in view, so there's nothing to bring along yet
+const filtersNeeded = () => filtersFit() && !$('#period').hidden && $('#period').getBoundingClientRect().bottom < 108;
+function setFilters(show) {
+  const el = $('#pillFilters'), on = !!show && filtersNeeded();
+  if (on && !el.classList.contains('show')) renderPillFilters();
+  el.classList.toggle('show', on);
+  el.inert = !on;
+}
 function setPill(open) {
   if (!open && (S.searching || reduced() || scrollY < 40 || pill.contains(document.activeElement) && document.activeElement !== $('#logoBtn'))) open = true;
   pill.classList.toggle('open', open);
+  setFilters(open);
   $('#pillTools').inert = !open;
   $('#logoBtn').setAttribute('aria-label', open ? `${NAME}. Back to the top` : `${NAME}. Show search, theme and settings`);
+}
+// Reading down draws the bottom bar in to its icons; coming back up opens it out again
+function setNavbar(tight) {
+  $('#navbar').classList.toggle('tight', !!tight && !reduced());
 }
 let lastY = scrollY, ticking = false;
 addEventListener('scroll', () => {
@@ -996,9 +1170,10 @@ addEventListener('scroll', () => {
     const y = scrollY, dy = y - lastY;
     if (!reduced() && y < 700) $('#sky').style.transform = `translateY(${(y * 0.35).toFixed(1)}px)`;   // the clouds drift a little slower than the page
     $('#toTop').classList.toggle('show', y > innerHeight * 0.8);
-    if (y < 40) { setPill(true); lastY = y; return; }
+    if (y < 40) { setPill(true); setNavbar(false); lastY = y; return; }
     if (Math.abs(dy) < 8) return;
     setPill(dy < 0);
+    setNavbar(dy > 0);
     lastY = y;
   });
 }, { passive: true });
@@ -1021,7 +1196,7 @@ function openSheet(html, kind) {
 const welcomed = () => { if (S.welcoming) { S.welcoming = false; put('welcomed', 1); } };
 function closeSheet() { welcomed(); if (sheet.open) sheet.close(); }
 sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
-sheet.addEventListener('close', () => { sheet.style.transform = ''; sheet.dataset.kind = ''; welcomed(); });   // also Escape and Android back
+sheet.addEventListener('close', () => { sheet.style.transform = ''; sheet.dataset.kind = ''; welcomed(); if (typeof paintMini === 'function') paintMini(); });   // also Escape and Android back
 const head = (title) => `<div class="sheet-head"><h2 id="sheetTitle">${title}</h2><button class="ib sl" type="button" data-act="close" aria-label="Close" title="Close">${icon('close')}</button></div>`;
 
 function openWelcome() {
@@ -1030,7 +1205,7 @@ function openWelcome() {
     <h2 id="sheetTitle" aria-label="Welcome to ${NAME}">Welcome to <code>${WM_G}</code></h2>
     <p class="lede">Welcome, fellow Google developers. It’s free for the whole community.</p>
     <p>Google Workspace, Google Cloud and GenAI move at a pace that’s hard to keep up with. ${WM} is my attempt to bring it all into one calm daily brief: what Google released, with links to Google’s own notes, docs, videos and tutorials.</p>
-    <p>It runs on the lightest stack I could find. A single Apps Script call once a day writes the brief, and GitHub Pages serves it. No accounts, no tracking, nothing to pay.</p>
+    <p>It runs on the lightest stack I could find. Two Apps Script runs a day write the brief, and GitHub Pages serves it. ${pulse.on ? 'No accounts, nothing to pay. Counts anonymous visits — no profiles, nothing personal.' : 'No accounts, no tracking, nothing to pay.'}</p>
     <p>Enjoy.</p>
     <p class="sig">${me()}</p>
     <div class="acts"><button class="ib big sl filled" type="button" data-act="close" aria-label="Read today’s brief" title="Read today’s brief">${icon('arrow')}</button>
@@ -1094,6 +1269,11 @@ function openSettings() {
       <button class="switch" type="button" role="switch" data-act="quiet" aria-checked="${!!S.set.quiet}" aria-label="Quieter Cloud release notes"></button></div>
     </div>
 
+    <h3 id="aiSetHead">Brief me with Gemini</h3>
+    <p class="small">Gemini writes and reads you a briefing of the updates you’re looking at. It runs on your own Gemini API key, so it never uses anyone else’s. The key stays on this phone and is only ever sent to Google. <a ${attrs('https://aistudio.google.com/apikey')}>Get a free key in Google AI Studio</a>.</p>
+    <div id="aiSet">${aiSetHtml()}</div>
+    <p class="small">On Gemini’s free tier, Google may use what’s sent to improve its products; here that’s only these public updates. To be safe, restrict the key in Google Cloud to the Generative Language API and to https://quick-sheet.github.io/*.</p>
+
     <h3>About</h3>
     <div class="group">
       <button class="row sl" type="button" data-act="welcome"><span class="lead">${icon('info')}</span><span class="txt">About ${WM}<small>Made by G. Sondhi, free for the Google developer community</small></span></button>
@@ -1101,7 +1281,7 @@ function openSettings() {
     </div>
 
     <h3>Sources</h3>
-    <p class="small">${b ? esc(C.updatedTxt(b.generated, now())) + '. ' : ''}Read once a day at about 7am UK time, and kept for three months. There’s no refresh button: the brief is the same for everyone, so it takes one Apps Script run a day.</p>
+    <p class="small">${b ? esc(C.updatedTxt(b.generated, now())) + '. ' : ''}Read twice a day, at about 7am and 7pm UK time, when most of Google’s US news has landed, and kept for three months. There’s no refresh button: the brief is the same for everyone, so it takes just two Apps Script runs a day.</p>
     ${sourcesHtml()}
 
     <h3>Learn sources</h3>
@@ -1305,6 +1485,7 @@ function chooseSubject(id) {
   return true;
 }
 document.addEventListener('submit', (e) => {
+  if (e.target.id === 'keyForm') { e.preventDefault(); saveKey($('#gk').value); return; }
   if (e.target.id !== 'lqForm') return;
   e.preventDefault();
   const q = $('#lq').value.trim();
@@ -1318,6 +1499,393 @@ function learnSourcesHtml() {
     const line = x.ok ? `${C.plural(x.c, 'new set', 'new sets')} this morning` : `Not read today: it ${esc(x.e || 'could not be reached')}`;
     return `<a class="row sl src-row learn-src" ${attrs(x.h)}><span class="${x.ok ? 'dot-ok' : 'dot-bad'}" aria-hidden="true"></span><span class="txt">${esc(x.n)}<small>${line}</small></span></a>`;
   }).join('')}</div>`;
+}
+
+/* ---------- Brief me: Gemini writes and reads a briefing, on the person's own key ---------- */
+// The key, voice and length live on this phone only (localStorage). Gemini is called straight from
+// here; nothing goes through Apps Script or GitHub. A brief and its recording are kept for the day,
+// so playing it again costs nothing.
+const Gm = window.Gem;
+const AI = Object.assign({ key: '', voice: 'Charon', len: 'short', rate: 1, models: null, form: '' }, get('gemini', {}));
+const saveAI = () => put('gemini', { key: AI.key, voice: AI.voice, len: AI.len, rate: AI.rate, models: AI.models, form: AI.form });
+const aiOn = () => !!AI.key;
+const RATES = [1, 1.25, 1.5];
+let run = null;            // the brief being written, recorded or played
+const aud = new Audio();   // one player for every part, so the lock screen keeps its controls
+aud.preload = 'auto';
+const SILENCE = URL.createObjectURL(new Blob([Gm.wav(new Uint8Array(2400), 24000)], { type: 'audio/wav' }));
+// A tap starts a moment of silence, so the phone lets the brief play once it's ready
+function unlock() { if (aud.getAttribute('src')) return; aud.src = SILENCE; const p = aud.play(); if (p) p.catch(() => {}); }
+const isSilence = () => aud.getAttribute('src') === SILENCE;
+const aiDay = () => String(C.dayKey(now()));
+function hashStr(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); }
+
+// Today's written briefs, by what they cover
+function textCache() { const c = get('aitext', null); return c && c.day === aiDay() ? c : { day: aiDay(), items: {} }; }
+function keepText(key, brief) {
+  const c = textCache();
+  c.items[key] = { at: now(), brief };
+  const keys = Object.keys(c.items).sort((a, b) => c.items[b].at - c.items[a].at);
+  keys.slice(12).forEach((k) => delete c.items[k]);
+  put('aitext', c);
+}
+// Today's recordings, in IndexedDB: the three most recent briefs
+const DB = (() => {
+  let p = null;
+  const open = () => p || (p = new Promise((res, rej) => {
+    try { const q = indexedDB.open('dgn-ai', 1); q.onupgradeneeded = () => q.result.createObjectStore('clips'); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }
+    catch (e) { rej(e); }
+  }));
+  const go = (mode, fn) => open().then((db) => new Promise((res, rej) => {
+    const t = db.transaction('clips', mode), q = fn(t.objectStore('clips'));
+    t.oncomplete = () => res(q && q.result); t.onerror = t.onabort = () => rej(t.error);
+  }));
+  return {
+    get: (k) => go('readonly', (st) => st.get(k)).catch(() => null),
+    put: (k, v) => go('readwrite', (st) => st.put(v, k)).catch(() => null),
+    keys: () => go('readonly', (st) => st.getAllKeys()).catch(() => []),
+    del: (ks) => go('readwrite', (st) => { ks.forEach((k) => st.delete(k)); }).catch(() => null),
+    clear: () => go('readwrite', (st) => st.clear()).catch(() => null),
+  };
+})();
+async function keepClip(base, i, blob) {
+  await DB.put(base + '#' + i, { at: now(), blob });
+  const bases = get('aiclips', []).filter((b) => b !== base && b.indexOf(aiDay() + '|') === 0).slice(-2).concat([base]);
+  put('aiclips', bases);
+  const keys = await DB.keys();
+  const gone = (keys || []).filter((k) => bases.indexOf(String(k).split('#')[0]) < 0);
+  if (gone.length) DB.del(gone);
+}
+
+// What the brief covers, in words: for Gemini, and for the sheet
+function aiScope() {
+  const p = C.PERIODS.find((x) => x.id === S.period), r = range();
+  const when = S.period === 'today' ? 'Today, ' + C.longDate(now()) : S.period === 'yesterday' ? 'Yesterday, ' + C.longDate(r.from) : p.n + ', since ' + C.longDate(r.from);
+  return when + (S.onlyNew ? ', only what’s new since the last visit' : '');
+}
+const aiLabel = (n) => [C.PERIODS.find((x) => x.id === S.period).n, C.plural(n, 'update', 'updates'), S.topics.length ? andList(topicNames()) : '', S.onlyNew ? 'new only' : ''].filter(Boolean).join(' · ');
+
+function aiStart(fresh) {
+  if (!aiOn() || !S.brief) return;
+  const items = briefList(false);
+  if (!items.length) { toast('Nothing to brief on here. Try a longer stretch.'); return; }
+  const req = Gm.request(items, {
+    len: AI.len, scope: aiScope(), topics: S.topics.length ? andList(topicNames()) : '',
+    stage: (st) => C.STAGES[st] || '', track: (tr) => C.TRACK_NAME[tr] || '',
+    src: (it) => [S.brief.srcName[it.src], C.shortDate(it.d)].filter(Boolean).join(', '),
+  });
+  const key = aiDay() + '|' + AI.len + '|' + hashStr(req.used.map((x) => x.id).join(','));
+  if (run && run.key === key && !fresh && run.state !== 'failed') { openAI(); return; }   // the same brief: show it as it is
+  stopRun();
+  unlock();
+  run = { key, len: AI.len, label: aiLabel(items.length), voice: AI.voice, brief: null, parts: [], i: 0, state: 'writing', err: null, ttsErr: null, ac: new AbortController(), playing: false, waiting: false, done: false };
+  openAI();
+  makeRun(run, req, fresh);
+}
+
+async function aiModels(cli, signal, again) {
+  const fresh = AI.models && AI.models.at && now() - AI.models.at < 7 * 864e5;
+  if (fresh && !again) return AI.models;
+  try { AI.models = await cli.models(signal); saveAI(); }
+  catch (e) { if (e.name === 'AbortError' || /key|denied|region/.test(e.kind)) throw e; if (!AI.models) AI.models = Object.assign({ at: 0 }, Gm.FALLBACK); }
+  return AI.models;
+}
+async function makeRun(r, req, fresh) {
+  const cli = Gm.client(AI.key);
+  try {
+    const hit = !fresh && textCache().items[r.key];
+    if (hit) r.brief = hit.brief;
+    else {
+      let m = await aiModels(cli, r.ac.signal), txt;
+      try { txt = await cli.write(m.text, req, r.ac.signal); }
+      catch (e) { if (e.kind !== 'model') throw e; m = await aiModels(cli, r.ac.signal, true); txt = await cli.write(m.text, req, r.ac.signal); }
+      r.brief = Gm.parseBrief(txt, req.used);
+      if (!r.brief) { const e = new Error('Gemini’s brief came back in a shape the app couldn’t read. Try again.'); e.kind = 'shape'; throw e; }
+      keepText(r.key, r.brief);
+    }
+    if (run !== r) return;
+    r.parts = Gm.parts(r.brief).map((x) => Object.assign(x, { state: 'wait', url: '' }));
+    r.state = 'recording';
+    paintAI(true);
+    await record(r, cli);
+  } catch (e) {
+    if (e.name === 'AbortError' || run !== r) return;
+    r.state = 'failed'; r.err = e;
+    paintAI(true);
+  }
+}
+// Each part is recorded in turn, the next while the one before plays
+async function record(r, cli) {
+  const base = r.key + '|' + r.voice + '|' + hashStr(JSON.stringify(r.brief));   // a new brief of the same updates gets a new recording
+  for (let i = 0; i < r.parts.length; i++) {
+    if (run !== r) return;
+    const p = r.parts[i];
+    p.state = 'making';
+    paintAI();
+    let blob = null;
+    const hit = await DB.get(base + '#' + i);
+    if (hit && hit.blob) blob = hit.blob;
+    else {
+      try {
+        const m = await aiModels(cli, r.ac.signal);
+        const got = await cli.speak(m.tts, r.voice, p.text, AI.form, r.ac.signal);
+        if (got.form !== AI.form || got.model !== m.tts[0]) { AI.form = got.form; AI.models.tts = [got.model].concat(m.tts.filter((x) => x !== got.model)); saveAI(); }
+        blob = new Blob([got.wav], { type: 'audio/wav' });
+        keepClip(base, i, blob);
+      } catch (e) {
+        if (e.name === 'AbortError' || run !== r) return;
+        p.state = 'failed'; r.ttsErr = e;
+        if (r.state === 'recording') r.state = 'ready';   // nothing recorded: the written brief stands on its own
+        r.parts.slice(i + 1).forEach((x) => { x.state = 'failed'; });
+        if (r.waiting) r.waiting = false;
+        paintAI();
+        return;
+      }
+    }
+    if (run !== r) return;
+    p.url = URL.createObjectURL(blob);
+    p.state = 'ready';
+    if (r.state === 'recording') { r.state = 'ready'; playPart(0); }
+    else if (r.waiting && r.i === i) playPart(i);
+    paintAI();
+  }
+}
+
+function stopRun() {
+  const r = run;
+  run = null;
+  if (!r) return;
+  try { r.ac.abort(); } catch (e) { /* already stopped */ }
+  if (!isSilence()) { aud.pause(); aud.removeAttribute('src'); aud.load(); }
+  r.parts.forEach((p) => { if (p.url) URL.revokeObjectURL(p.url); });
+  if ('mediaSession' in navigator) { try { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; } catch (e) { /* not supported */ } }
+  paintMini();
+}
+
+/* Playing */
+function playPart(i) {
+  const r = run;
+  if (!r || !r.parts[i]) return;
+  r.i = i; r.done = false;
+  const p = r.parts[i];
+  if (p.state !== 'ready') { r.waiting = p.state !== 'failed'; if (!isSilence()) aud.pause(); paintAI(); return; }
+  r.waiting = false;
+  aud.src = p.url;
+  aud.playbackRate = AI.rate || 1;
+  const pr = aud.play();
+  if (pr) pr.catch(() => { if (run === r) { r.playing = false; paintAI(); } });
+  mediaMeta();
+  paintAI();
+  // Keep the part being read in view
+  const sec = sheetIs('ai') && $(`#aiText [data-sec="${p.secs[0]}"]`);
+  if (sec) sec.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
+}
+function aiToggle() {
+  const r = run;
+  if (!r) return;
+  if (r.playing) { aud.pause(); return; }
+  if (r.done) { playPart(0); return; }
+  const p = r.parts[r.i];
+  if (p && p.state === 'ready' && aud.getAttribute('src') === p.url) { const pr = aud.play(); if (pr) pr.catch(() => {}); }
+  else playPart(r.i);
+}
+function aiSkip(d) {
+  const r = run;
+  if (!r || !r.parts.length) return;
+  if (d < 0 && aud.currentTime > 3 && !r.waiting) { aud.currentTime = 0; return; }   // back: the start of this part first
+  const i = Math.max(0, Math.min(r.parts.length - 1, r.i + d));
+  if (i !== r.i || d < 0) playPart(i);
+}
+function mediaMeta() {
+  if (!('mediaSession' in navigator) || !run || !run.brief) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: run.brief.title, artist: NAME + ' · ' + run.label, album: 'Brief me',
+      artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }, { src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] });
+    const h = { play: () => aiToggle(), pause: () => aud.pause(), previoustrack: () => aiSkip(-1), nexttrack: () => aiSkip(1), stop: () => stopRun() };
+    Object.keys(h).forEach((k) => { try { navigator.mediaSession.setActionHandler(k, h[k]); } catch (e) { /* not on this phone */ } });
+  } catch (e) { /* no media session */ }
+}
+aud.addEventListener('play', () => { if (run && !isSilence()) { run.playing = true; if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; paintAI(); } });
+aud.addEventListener('pause', () => { if (run && !isSilence()) { run.playing = false; if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; paintAI(); } });
+aud.addEventListener('ended', () => {
+  const r = run;
+  if (!r || isSilence()) return;
+  if (r.i + 1 < r.parts.length && r.parts[r.i + 1].state !== 'failed') playPart(r.i + 1);
+  else { r.playing = false; r.done = true; paintAI(); }
+});
+let lastTick = 0;
+aud.addEventListener('timeupdate', () => { if (!run || isSilence() || now() - lastTick < 450) return; lastTick = now(); paintTime(); });
+
+/* The sheet */
+const sheetIs = (k) => sheet.open && sheet.dataset.kind === k;
+const mmss = (s) => (isFinite(s) && s > 0 ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00');
+const timeTxt = () => (aud.getAttribute('src') && !isSilence() ? `${mmss(aud.currentTime)} / ${mmss(aud.duration)}` : '');
+function partTxt() {
+  const r = run;
+  if (!r || !r.parts.length) return '';
+  const n = r.parts.length;
+  return `Part ${r.i + 1} of ${n}` + (aud.getAttribute('src') && !isSilence() ? ` · ${mmss(aud.currentTime)} / ${mmss(aud.duration)}` : '');
+}
+function statusHtml() {
+  const r = run, spin = '<span class="spinner" aria-hidden="true"></span>';
+  if (!r) return '';
+  if (r.state === 'failed') {
+    const e = r.err || {};
+    const fix = /key|denied/.test(e.kind) ? `<button class="ib sl tonal" type="button" data-act="ai-settings" aria-label="Open Settings" title="Settings">${icon('tune')}</button><span class="hint">Settings</span>`
+      : `<button class="ib sl tonal" type="button" data-act="ai-new" aria-label="Try again" title="Try again">${icon('refresh')}</button><span class="hint">Try again</span>`;
+    return `<span class="err">${esc(e.message || 'Something went wrong.')}</span><span class="acts">${fix}</span>`;
+  }
+  if (r.state === 'writing') return `${spin}Gemini is writing your brief…`;
+  if (r.state === 'recording') return `${spin}Recording it in ${esc(r.voice)}’s voice…`;
+  const failedAt = r.parts.findIndex((p) => p.state === 'failed');
+  if (r.ttsErr && failedAt === 0) return `<span class="err">Couldn’t record the voice. ${esc(r.ttsErr.message)} The written brief is below.</span>`;
+  if (r.waiting) return `${spin}Recording the next part…`;
+  if (r.done) return failedAt > 0 ? `<span class="err">That’s as far as it recorded. ${esc(r.ttsErr ? r.ttsErr.message : '')}</span>` : 'That’s your brief.';
+  const making = r.parts.some((p) => p.state === 'making' || p.state === 'wait');
+  return `Part ${r.i + 1} of ${r.parts.length}${making && !r.ttsErr ? ' · recording the rest' : ''}`;
+}
+function ctlHtml() {
+  const r = run, ready = !!(r && r.parts.some((p) => p.state === 'ready'));
+  const dis = ready ? '' : ' disabled', playing = !!(r && r.playing);
+  const rate = AI.rate || 1;
+  return `<button class="ib sl" type="button" data-act="ai-prev" aria-label="Back" title="Back"${dis}>${icon('prev')}</button>
+    <button class="ib big sl filled" type="button" data-act="ai-play" aria-label="${playing ? 'Pause' : 'Play'}" title="${playing ? 'Pause' : 'Play'}"${dis}>${icon(playing ? 'pause' : 'play')}</button>
+    <button class="ib sl" type="button" data-act="ai-next" aria-label="Next part" title="Next part"${dis}>${icon('next')}</button>
+    <span class="ai-time num" id="aiTime">${esc(ready ? timeTxt() : '')}</span>
+    <button class="ai-rate sl num" type="button" data-act="ai-rate" aria-label="${esc('Speed ' + rate + ' times. Tap to change')}">${rate}×</button>`;
+}
+function refsHtml(ids) {
+  const its = (ids || []).map(findItem).filter(Boolean).slice(0, 6);
+  return its.length ? `<div class="ai-refs">${its.map((it) => `<button class="ai-ref sl" type="button" data-goto="${esc(it.id)}">${icon('arrow')}<span>${esc(it.t)}</span></button>`).join('')}</div>` : '';
+}
+function textHtml() {
+  const r = run, b = r && r.brief;
+  if (!b) return r && r.state === 'writing' ? '<div class="ai-wait" aria-hidden="true"><i></i><i></i><i></i></div>' : '';
+  const sec = (k, inner) => `<div class="ai-sec" data-sec="${k}">${inner}</div>`;
+  return `<h3 class="ai-title">${esc(b.title)}</h3>
+    ${b.intro ? sec(-1, `<p>${esc(b.intro)}</p>`) : ''}
+    ${b.sections.map((s, i) => sec(i, `${s.h ? `<h4>${esc(s.h)}</h4>` : ''}<p>${esc(s.text)}</p>${refsHtml(s.ids)}`)).join('')}
+    ${b.outro ? sec(-2, `<p>${esc(b.outro)}</p>`) : ''}`;
+}
+const lenChips = (attr) => Object.keys(Gm.LENGTHS).map((k) => `<button class="chip sl" type="button" ${attr}="${k}" aria-pressed="${AI.len === k}">${icon('check')}${esc(Gm.LENGTHS[k].n)}</button>`).join('');
+function openAI() {
+  const r = run;
+  if (!r) return;
+  openSheet(head('Brief me') + `<div class="ai" id="ai">
+    <p class="small ai-scope">${esc(r.label)}</p>
+    <div class="ai-len" role="group" aria-label="Length">${lenChips('data-ailen')}</div>
+    <div class="ai-ctl" id="aiCtl">${ctlHtml()}</div>
+    <p class="ai-status" id="aiStatus" role="status">${statusHtml()}</p>
+    <div class="ai-text" id="aiText">${textHtml()}</div>
+    <p class="small ai-note">Written and read by Gemini with your own key. It can get things wrong, so check the updates it points to.</p>
+    <div class="acts"><button class="ib sl tonal" type="button" data-act="ai-new" aria-label="Make a new brief" title="Make a new one">${icon('refresh')}</button><span class="hint">Make a new one</span></div>
+  </div>`, 'ai');
+  r.painted = !!r.brief;
+  paintNow();
+  paintMini();
+}
+function paintAI(text) {
+  const r = run;
+  if (sheetIs('ai') && r) {
+    $('#aiCtl').innerHTML = ctlHtml();
+    $('#aiStatus').innerHTML = statusHtml();
+    if (text || (r.brief && !r.painted)) { $('#aiText').innerHTML = textHtml(); r.painted = !!r.brief; }
+    paintNow();
+  }
+  paintMini();
+}
+function paintTime() {
+  const t = $('#aiTime');
+  if (t && sheetIs('ai')) t.textContent = timeTxt();
+  const m = $('#miniSub');
+  if (m) m.textContent = partTxt();
+}
+// The sections being read now are lit
+function paintNow() {
+  const r = run;
+  if (!sheetIs('ai') || !r) return;
+  const p = r.parts[r.i], on = p && (r.playing || r.waiting || !r.done) && r.parts.some((x) => x.state === 'ready') ? p.secs : [];
+  document.querySelectorAll('#aiText .ai-sec').forEach((el) => el.classList.toggle('now', on.indexOf(+el.dataset.sec) >= 0));
+}
+function paintMini() {
+  const m = $('#mini');
+  const show = !!(run && run.parts.some((p) => p.state === 'ready') && !sheetIs('ai'));
+  document.documentElement.classList.toggle('mini-on', show);
+  if (!show) { m.hidden = true; m.innerHTML = ''; return; }
+  m.hidden = false;
+  m.innerHTML = `<button class="ib sl" type="button" data-act="ai-play" aria-label="${run.playing ? 'Pause' : 'Play'}" title="${run.playing ? 'Pause' : 'Play'}">${icon(run.playing ? 'pause' : 'play')}</button>
+    <button class="mini-txt sl" type="button" data-act="ai-open" aria-label="Open your brief"><b>${esc(run.brief ? run.brief.title : 'Your brief')}</b><small id="miniSub">${esc(partTxt())}</small></button>
+    <button class="ib sl" type="button" data-act="ai-stop" aria-label="Stop the brief" title="Stop">${icon('close')}</button>`;
+}
+
+// From the brief to the update it mentions: the card opens and glows
+function revealItem(id) {
+  closeSheet();
+  if (S.searching) closeSearch();
+  if (S.view !== 'brief') { freshView(); S.view = 'brief'; put('view', S.view); S.days = DAYS_STEP; }
+  render();
+  const smooth = reduced() ? 'auto' : 'smooth';
+  if (id === heroId) { $('#hero').scrollIntoView({ block: 'start', behavior: smooth }); return; }
+  const days = C.group(briefList(false).filter((x) => x.id !== heroId), now());
+  const di = days.findIndex((d) => d.items.some((x) => x.id === id));
+  if (di < 0) { toast('That update isn’t in what’s showing now.'); return; }
+  S.days = Math.max(S.days, di + 1); S.more[days[di].key] = true; S.open = id;
+  renderList(); renderTail(); reveal();
+  const el = document.querySelector(`.item[data-id="${CSS.escape(id)}"]`);
+  if (!el) return;
+  el.classList.add('in');
+  el.scrollIntoView({ block: 'center', behavior: smooth });
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 1700);
+}
+
+/* Settings: the key, the voice and the length */
+function aiSetHtml() {
+  if (!AI.key) {
+    return `<form class="lq" id="keyForm" autocomplete="off"><label class="vh" for="gk">Your Gemini API key</label>
+      <input id="gk" type="password" placeholder="Paste your Gemini API key" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+      <button class="ib sl filled" type="submit" aria-label="Save and check the key" title="Save">${icon('check')}</button></form>
+      <div class="lq-out" id="keyOut" aria-live="polite"></div>`;
+  }
+  const m = AI.models;
+  return `<div class="group"><div class="row"><span class="lead">${icon('key')}</span>
+      <span class="txt">Key ending ${esc(AI.key.slice(-4))}<small id="keyOut" aria-live="polite">${m && m.at ? esc('Writes with ' + m.text + ', reads with ' + m.tts[0]) : 'Saved on this phone'}</small></span>
+      <button class="ib sl" type="button" data-act="key-test" aria-label="Check the key with Google" title="Check">${icon('refresh')}</button>
+      <button class="ib sl" type="button" data-act="key-remove" aria-label="Remove the key from this phone" title="Remove">${icon('del')}</button></div></div>
+    <h4 class="sub">Voice</h4>
+    <div class="chipset">${Gm.VOICES.map((v) => `<button class="chip sl" type="button" data-voice="${v.id}" aria-pressed="${AI.voice === v.id}">${icon('check')}${esc(v.id)}<span class="c">${esc(v.d)}</span></button>`).join('')}</div>
+    <h4 class="sub">Length</h4>
+    <div class="chipset">${lenChips('data-setlen')}</div>`;
+}
+function paintSet() { const el = $('#aiSet'); if (el && sheetIs('settings')) el.innerHTML = aiSetHtml(); }
+async function saveKey(k) {
+  const out = $('#keyOut');
+  k = String(k || '').replace(/\s+/g, '');
+  if (!/^[\w-]{20,}$/.test(k)) { out.textContent = 'That doesn’t look like a Gemini API key. Copy it from Google AI Studio: it’s one long line of letters and numbers.'; return; }
+  out.innerHTML = '<span class="spinner" aria-hidden="true"></span>Checking it with Google…';
+  try {
+    const m = await Gm.client(k).models();
+    AI.key = k; AI.models = m; AI.form = '';
+    saveAI();
+    paintSet();
+    renderBar();
+    toast('Key saved. Brief me is ready in Brief.');
+  } catch (e) { const o = $('#keyOut'); if (o) o.textContent = e.message; }
+}
+async function testKey() {
+  const out = $('#keyOut');
+  if (out) out.innerHTML = '<span class="spinner" aria-hidden="true"></span>Checking…';
+  try {
+    AI.models = await Gm.client(AI.key).models(); saveAI();
+    const o = $('#keyOut'); if (o) o.textContent = 'Works. Writes with ' + AI.models.text + ', reads with ' + AI.models.tts[0] + '.';
+  } catch (e) { const o = $('#keyOut'); if (o) o.textContent = e.message; }
+}
+function removeKey() {
+  stopRun();
+  AI.key = ''; AI.models = null; AI.form = '';
+  saveAI(); put('aitext', null); put('aiclips', []); DB.clear();
+  paintSet(); renderBar();
+  toast('Key removed from this phone.');
 }
 
 /* Drag a sheet down by its top band, or swipe it right, to close it */
@@ -1420,7 +1988,7 @@ window.addEventListener('popstate', () => {
 
 /* ---------- Share ---------- */
 async function share() {
-  const data = { title: NAME, text: 'What’s new across Google, once a day. Free for the Google developer community.', url: APP_URL };
+  const data = { title: NAME, text: 'What’s new across Google, twice a day. Free for the Google developer community.', url: APP_URL };
   try { if (navigator.share) { await navigator.share(data); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(APP_URL); toast('Link copied'); }
   catch { toast('Copy this link: ' + APP_URL); }
@@ -1469,6 +2037,10 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (d.dismiss) { const x = get('dismissed', {}); x[d.dismiss] = 1; put('dismissed', x); renderNotices(); return; }
+  if (d.goto) { revealItem(d.goto); return; }
+  if (d.voice) { AI.voice = d.voice; saveAI(); paintSet(); return; }
+  if (d.setlen) { AI.len = d.setlen; saveAI(); paintSet(); return; }
+  if (d.ailen) { if (d.ailen !== AI.len) { AI.len = d.ailen; saveAI(); aiStart(); } return; }
   switch (d.act) {
     case 'close': closeSheet(); break;
     case 'retry': load(); break;
@@ -1485,6 +2057,17 @@ document.addEventListener('click', (e) => {
     case 'welcome': openWelcome(); break;
     case 'share': share(); break;
     case 'install': if (S.installEvt) { S.installEvt.prompt(); S.installEvt = null; renderNotices(); } break;
+    case 'ai': aiStart(); break;
+    case 'ai-new': aiStart(true); break;
+    case 'ai-open': openAI(); break;
+    case 'ai-play': aiToggle(); break;
+    case 'ai-prev': aiSkip(-1); break;
+    case 'ai-next': aiSkip(1); break;
+    case 'ai-stop': stopRun(); break;
+    case 'ai-rate': AI.rate = RATES[(RATES.indexOf(AI.rate || 1) + 1) % RATES.length]; saveAI(); aud.playbackRate = AI.rate; paintAI(); break;
+    case 'ai-settings': openSettings(); setTimeout(() => { const h = $('#aiSetHead'); if (h) h.scrollIntoView({ block: 'start' }); }, 50); break;
+    case 'key-test': testKey(); break;
+    case 'key-remove': removeKey(); break;
   }
 });
 $('#settingsBtn').addEventListener('click', () => openSettings());

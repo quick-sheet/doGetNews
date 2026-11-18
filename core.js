@@ -162,6 +162,16 @@
     if (now - gen < 6 * DAY) return 'Updated on ' + new Date(gen).toLocaleDateString(undefined, { weekday: 'long' }) + ' at ' + time(gen);
     return 'Updated ' + ago(gen, now);
   }
+  // The brief is written at about 7am and 7pm UK time (Google's US day lands in the UK evening and overnight):
+  // which of the two comes next, in words
+  const RUNS = [7, 19];
+  function nextRun(now) {
+    let h;
+    try { h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hourCycle: 'h23' }).format(new Date(now)); }
+    catch (e) { h = new Date(now).getUTCHours(); }
+    const next = RUNS.find((r) => h < r);
+    return 'about ' + (next === 19 ? '7pm' : '7am') + ' UK time';
+  }
   // A brief more than 30 hours old means a daily run was missed
   const isStale = (gen, now) => !!gen && now - gen > 30 * H;
 
@@ -309,11 +319,25 @@
     const when = first && dayKey(x.d) === dayKey(L.generated) ? 'Tip of the day' : dayLabel(x.d, now);
     return subjectName(L, x.s) + ' · ' + when;
   }
-  // The message Daily Drift's embed mode takes
+  // The message Daily Drift's embed mode takes, cut to the lengths it shows (its Release 16 contract):
+  // label 40, title 90, body 700, kicker 60, credit 140; code 12 lines of 240; up to 4 https links a part
+  const DD_MAX = { label: 40, title: 90, body: 700, kicker: 60, credit: 140, lines: 12, line: 240, links: 4 };
+  function cut(s, n) {
+    s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+    if (s.length <= n) return s;
+    const c = s.slice(0, n - 1), sp = c.lastIndexOf(' ');
+    return (sp > n * 0.6 ? c.slice(0, sp) : c).replace(/[\s,;:.–—-]+$/, '') + '…';
+  }
+  function cutCode(code) {
+    let lines = String(code || '').replace(/\r/g, '').split('\n').map((l) => (l.length > DD_MAX.line ? l.slice(0, DD_MAX.line - 1) + '…' : l));
+    if (lines.length > DD_MAX.lines) lines = lines.slice(0, DD_MAX.lines - 1).concat(['…']);
+    return lines.join('\n');
+  }
   function toDD(x, kicker) {
-    return { id: x.id, kicker, credit: x.credit, parts: x.parts.slice(0, 3).map((p) => {
-      const o = { label: p.label, title: p.title, body: p.body, links: p.links.map((l) => ({ text: l.text, url: l.url })) };
-      if (p.code) o.code = p.code;
+    return { id: x.id, kicker: cut(kicker, DD_MAX.kicker), credit: cut(x.credit, DD_MAX.credit), parts: x.parts.slice(0, 3).map((p) => {
+      const o = { label: cut(p.label, DD_MAX.label), title: cut(p.title, DD_MAX.title), body: cut(p.body, DD_MAX.body),
+        links: (p.links || []).filter((l) => /^https:\/\//i.test(l.url || '')).slice(0, DD_MAX.links).map((l) => ({ text: cut(l.text, 40), url: l.url })) };
+      if (p.code) o.code = cutCode(p.code);
       return o;
     }) };
   }
@@ -321,8 +345,8 @@
   const Core = {
     TRACKS, TRACK_NAME, STAGES, TOPICS, TOPIC, TOPIC_GROUPS, FROM_TRACK, inTopic, inTopics, topicCounts, cleanTopics, mergeArchive,
     PERIODS, periodRange, inRange, periodCounts, cleanPeriod,
-    prepareLearn, subjectName, learnSets, learnFirst, learnNext, learnKicker, toDD,
-    prepare, dayKey, dayLabel, longDate, shortDate, time, ago, updatedTxt, isStale,
+    prepareLearn, subjectName, learnSets, learnFirst, learnNext, learnKicker, toDD, DD_MAX,
+    prepare, dayKey, dayLabel, longDate, shortDate, time, ago, updatedTxt, isStale, nextRun, RUNS,
     matches, filter, isNew, newCount, group, topPick, stats, statsTxt, plural, readLabel, extHref, isIntent, hostOf, thumb,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Core;

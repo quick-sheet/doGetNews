@@ -1,6 +1,6 @@
 /* doGet(news) service worker: works offline, picks up updates on the next open. */
-const CACHE = 'dogetnews-v6';   // bump on every release, together with core.js?v= in index.html
-const SHELL = ['./', 'index.html', 'core.js', 'manifest.webmanifest', 'logo.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const CACHE = 'dogetnews-v9';   // bump on every release, together with core.js?v= in index.html
+const SHELL = ['./', 'index.html', 'core.js', 'gemini.js', 'manifest.webmanifest', 'logo.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   // 'reload' skips the browser's own copy, so the offline set is always the release just published

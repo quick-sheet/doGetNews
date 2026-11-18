@@ -1,7 +1,7 @@
 {
   "name": "doGet(news)",
   "short_name": "doGet(news)",
-  "description": "What’s new across Google, once a day.",
+  "description": "What’s new across Google, twice a day.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
