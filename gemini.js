@@ -11,6 +11,8 @@
   ];
   // Used when the list of models can't be read; the list itself is preferred, as names change often
   const FALLBACK = { text: 'gemini-flash-latest', tts: ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'] };
+  // Nothing is left waiting for ever: a call that hasn't answered by then is given up on
+  const WAIT = { models: 30000, write: 75000, speak: 90000 };
   const MAX_ITEMS = 150;    // a quarter can hold hundreds: the most important 150 go in
   const FIRST = 520;        // characters in the first spoken part, so the voice starts in seconds
   const NEXT = 1100;        // characters in each part after that
@@ -201,18 +203,36 @@
     opts = opts || {};
     const f = opts.fetch || ((u, o) => fetch(u, o));
     const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+    const wait = Object.assign({}, WAIT, opts.wait || {});
     const aborted = () => { const e = new Error('stopped'); e.name = 'AbortError'; return e; };
-    async function call(path, body, signal) {
-      let res;
+    const tooSlow = (ms) => { const n = Math.round(ms / 1000); const e = new Error(`Gemini didn’t answer within ${n} second${n === 1 ? '' : 's'}. It may be busy — try again.`); e.kind = 'slow'; return e; };
+    async function call(path, body, signal, ms) {
+      ms = ms || wait.write;
+      // The caller's own stop, and a clock, both end the call
+      const ac = new AbortController();
+      const stop = () => ac.abort();
+      if (signal) { if (signal.aborted) throw aborted(); signal.addEventListener('abort', stop); }
+      let late = false;
+      const timer = setTimeout(() => { late = true; ac.abort(); }, ms);
       try {
-        res = await f(API + path, { method: body ? 'POST' : 'GET', signal,
-          headers: Object.assign({ 'x-goog-api-key': key }, body ? { 'Content-Type': 'application/json' } : {}),
-          body: body ? JSON.stringify(body) : undefined });
-      } catch (e) { if (e && e.name === 'AbortError') throw e; throw problem(0, null); }
-      let j = null;
-      try { j = await res.json(); } catch (e) { j = null; }
-      if (!res.ok) throw problem(res.status, j);
-      return j;
+        let res;
+        try {
+          res = await f(API + path, { method: body ? 'POST' : 'GET', signal: ac.signal,
+            headers: Object.assign({ 'x-goog-api-key': key }, body ? { 'Content-Type': 'application/json' } : {}),
+            body: body ? JSON.stringify(body) : undefined });
+        } catch (e) {
+          if (late) throw tooSlow(ms);
+          if (e && e.name === 'AbortError') throw e;
+          throw problem(0, null);
+        }
+        let j = null;
+        try { j = await res.json(); } catch (e) { if (late) throw tooSlow(ms); j = null; }
+        if (!res.ok) throw problem(res.status, j);
+        return j;
+      } finally {
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener('abort', stop);
+      }
     }
     // A moment's busyness (a 503, or a per-minute limit) is waited out, twice at most
     async function patient(fn, signal) {
@@ -229,7 +249,7 @@
     async function models(signal) {
       let page = '', list = [];
       for (let k = 0; k < 5; k++) {
-        const j = await call('models?pageSize=1000' + (page ? '&pageToken=' + encodeURIComponent(page) : ''), null, signal);
+        const j = await call('models?pageSize=1000' + (page ? '&pageToken=' + encodeURIComponent(page) : ''), null, signal, wait.models);
         list = list.concat((j && j.models) || []);
         page = j && j.nextPageToken;
         if (!page) break;
@@ -239,13 +259,13 @@
     async function write(model, req, signal) {
       const body = { systemInstruction: { parts: [{ text: req.system }] }, contents: [{ role: 'user', parts: [{ text: req.user }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.4 } };
-      return textOf(await patient(() => call('models/' + encodeURIComponent(model) + ':generateContent', body, signal), signal));
+      return textOf(await patient(() => call('models/' + encodeURIComponent(model) + ':generateContent', body, signal, wait.write), signal));
     }
     // Two ways of naming the voice: the long-standing one, and the shorter one newer models document
     const voiceBody = (text, voice, form) => ({ contents: [{ role: 'user', parts: [{ text: STYLE + text }] }],
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: form === 'short' ? { voiceConfig: { voice } } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } });
     async function speakWith(model, voice, text, form, signal) {
-      const go = (fm) => patient(() => call('models/' + encodeURIComponent(model) + ':generateContent', voiceBody(text, voice, fm), signal), signal);
+      const go = (fm) => patient(() => call('models/' + encodeURIComponent(model) + ':generateContent', voiceBody(text, voice, fm), signal, wait.speak), signal);
       const first = form || 'long';
       try { return { wav: audioOf(await go(first)), form: first }; } catch (e) {
         if (e.kind !== 'form' && !(e.kind === 'other' && e.status === 400)) throw e;
@@ -268,7 +288,7 @@
     return { models, write, speak, call };
   }
 
-  const Gem = { API, VOICES, LENGTHS, FALLBACK, MAX_ITEMS, FIRST, NEXT, STYLE, pickModels, request, parseBrief, parts, wav, b64bytes, secondsOf, problem, textOf, audioOf, client };
+  const Gem = { API, VOICES, LENGTHS, FALLBACK, WAIT, MAX_ITEMS, FIRST, NEXT, STYLE, pickModels, request, parseBrief, parts, wav, b64bytes, secondsOf, problem, textOf, audioOf, client };
   if (typeof module !== 'undefined' && module.exports) module.exports = Gem;
   else root.Gem = Gem;
 })(typeof self !== 'undefined' ? self : this);
