@@ -28,7 +28,7 @@
   const QUOTA = {
     any: 'You’ve used today’s free Gemini allowance for this. It resets tomorrow, or you can turn on billing in Google AI Studio.',
     write: 'Today’s free allowance for writing briefs is used up. Reading aloud has its own, so briefs you already have can still be read. It resets tomorrow, or you can turn on billing in Google AI Studio.',
-    speak: 'Today’s free allowance for reading aloud is used up — writing has its own, so new briefs still arrive in writing. It resets tomorrow, or you can turn on billing in Google AI Studio.',
+    speak: 'Today’s free allowance for reading aloud is used up - writing has its own, so new briefs still arrive in writing. It resets tomorrow, or you can turn on billing in Google AI Studio.',
   };
 
   // Written for the eye, said for the ear: the name is swapped for its sound before it's read out,
@@ -223,7 +223,7 @@
     const sleep = opts.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
     const wait = Object.assign({}, WAIT, opts.wait || {});
     const aborted = () => { const e = new Error('stopped'); e.name = 'AbortError'; return e; };
-    const tooSlow = (ms) => { const n = Math.round(ms / 1000); const e = new Error(`Gemini didn’t answer within ${n} second${n === 1 ? '' : 's'}. It may be busy — try again.`); e.kind = 'slow'; return e; };
+    const tooSlow = (ms) => { const n = Math.round(ms / 1000); const e = new Error(`Gemini didn’t answer within ${n} second${n === 1 ? '' : 's'}. It may be busy - try again.`); e.kind = 'slow'; return e; };
     async function call(path, body, signal, ms) {
       ms = ms || wait.write;
       // The caller's own stop, and a clock, both end the call

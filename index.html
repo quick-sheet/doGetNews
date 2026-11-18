@@ -540,8 +540,8 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <div class="mini" id="mini" role="region" aria-label="Your brief" hidden></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=10"></script>
-<script src="gemini.js?v=10"></script>
+<script src="core.js?v=11"></script>
+<script src="gemini.js?v=11"></script>
 <script>
 (() => {
 'use strict';
@@ -658,7 +658,7 @@ function toast(msg) {
 }
 
 /* ---------- The anonymous pulse ----------
-   Counts visits, never people. Two fire-and-forget beacons — one on opening, one on leaving — which a
+   Counts visits, never people. Two fire-and-forget beacons - one on opening, one on leaving - which a
    separate Apps Script folds into running totals and then throws away. Nothing identifies anyone, nothing
    is kept per visitor, and no two beacons are ever joined up. An empty PULSE_URL sends nothing. */
 const pulse = (() => {
@@ -1099,7 +1099,7 @@ function renderNav() {
 const me = () => (LINKEDIN ? `<a ${attrs(LINKEDIN)} aria-label="G. Sondhi on LinkedIn">G. Sondhi</a>` : 'G. Sondhi');
 function renderFoot() {
   $('#foot').innerHTML = `<div><p>Made by ${me()}. Free for the Google developer community.</p>
-    <p>Independent and not affiliated with Google. Every update links to Google’s own page.${pulse.on ? ' Counts anonymous visits — no profiles, nothing personal.' : ''}</p>
+    <p>Independent and not affiliated with Google. Every update links to Google’s own page.${pulse.on ? ' Counts anonymous visits - no profiles, nothing personal.' : ''}</p>
     <p>${S.brief ? esc(C.updatedTxt(S.brief.generated, now())) + '. ' : ''}A new brief arrives twice a day, at about 7am and 7pm UK time, and keeps three months.</p></div>
     <button class="ib sl" type="button" data-act="share" aria-label="Share ${NAME}" title="Share">${icon('share')}</button>`;
 }
@@ -1213,7 +1213,7 @@ function openWelcome() {
     <h2 id="sheetTitle" aria-label="Welcome to ${NAME}">Welcome to <code>${WM_G}</code></h2>
     <p class="lede">Welcome, fellow Google developers. It’s free for the whole community.</p>
     <p>Google Workspace, Google Cloud and GenAI move at a pace that’s hard to keep up with. ${WM} is my attempt to bring it all into one calm daily brief: what Google released, with links to Google’s own notes, docs, videos and tutorials.</p>
-    <p>It runs on the lightest stack I could find. Two Apps Script runs a day write the brief, and GitHub Pages serves it. ${pulse.on ? 'No accounts, nothing to pay. Counts anonymous visits — no profiles, nothing personal.' : 'No accounts, no tracking, nothing to pay.'}</p>
+    <p>It runs on the lightest stack I could find. Two Apps Script runs a day write the brief, and GitHub Pages serves it. ${pulse.on ? 'No accounts, nothing to pay. Counts anonymous visits - no profiles, nothing personal.' : 'No accounts, no tracking, nothing to pay.'}</p>
     <p>Enjoy.</p>
     <p class="sig">${me()}</p>
     <div class="acts"><button class="ib big sl filled" type="button" data-act="close" aria-label="Read today’s brief" title="Read today’s brief">${icon('arrow')}</button>
@@ -1539,7 +1539,9 @@ function keepText(key, brief, about) {
   put('aitext', c);
 }
 // Today's briefs, newest first
-const briefsToday = () => { const c = textCache(); return Object.keys(c.items).map((k) => Object.assign({ key: k }, c.items[k])).filter((x) => x.brief && x.label).sort((a, b) => b.at - a.at); };
+// A brief made before the app kept the words that name it still counts: the time it was made will do
+const briefsToday = () => { const c = textCache(); return Object.keys(c.items).map((k) => Object.assign({ key: k }, c.items[k])).filter((x) => x.brief).sort((a, b) => b.at - a.at); };
+const briefName = (x) => x.short || x.label || ('Made at ' + C.time(x.at));
 // Whether a brief still has its recording on this phone
 const hasClip = (key) => get('aiclips', []).some((b) => String(b).indexOf(key + '|') === 0);
 // Today's recordings, in IndexedDB: the three most recent briefs
@@ -1631,7 +1633,7 @@ async function makeRun(r, req, fresh) {
   const cli = Gm.client(AI.key);
   try {
     const hit = !fresh && textCache().items[r.key];
-    if (hit) r.brief = hit.brief;
+    if (hit) { r.brief = hit.brief; keepText(r.key, r.brief, { at: hit.at, label: r.label, short: r.short, len: r.len, voice: r.voice }); }
     else {
       let m = await aiModels(cli, r.ac.signal), got;
       const list = (x) => (x.texts && x.texts.length ? x.texts : [x.text]);
@@ -1661,7 +1663,7 @@ async function openPast(key) {
   if (!c || !c.brief) { aiStart(); return; }
   stopRun();
   unlock();
-  const r = run = { key, len: c.len || AI.len, label: c.label, short: c.short, voice: c.voice || AI.voice, brief: c.brief, parts: [], i: 0,
+  const r = run = { key, len: c.len || AI.len, label: c.label || c.short || ('Made at ' + C.time(c.at)), short: c.short, voice: c.voice || AI.voice, brief: c.brief, parts: [], i: 0,
     state: 'ready', err: null, ttsErr: null, ac: new AbortController(), playing: false, waiting: false, done: false, started: now(), again: true };
   r.parts = Gm.parts(r.brief).map((x) => Object.assign(x, { state: 'wait', url: '' }));
   openAI();
@@ -1850,7 +1852,7 @@ function pastHtml() {
   const rest = briefsToday().filter((x) => x.key !== mine).slice(0, 5);
   if (!rest.length) return '';
   return `<div class="ai-past"><p class="small">Earlier today</p><div class="ai-past-row">${rest.map((x) =>
-    `<button class="chip sl" type="button" data-aipast="${esc(x.key)}">${esc(x.short || x.label)}${hasClip(x.key) ? '' : '<small>text</small>'}</button>`).join('')}</div></div>`;
+    `<button class="chip sl" type="button" data-aipast="${esc(x.key)}">${esc(briefName(x))}${hasClip(x.key) ? '' : '<small>text</small>'}</button>`).join('')}</div></div>`;
 }
 // Whether what's open is a brief of what's on screen now
 function aiIsNow() {
