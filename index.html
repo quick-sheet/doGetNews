@@ -551,7 +551,7 @@ const DD_ORIGIN = new URL(DD_URL).origin;
 const DD_WAIT = 8000;   // if Daily Drift hasn't said hello by then, the plain card takes over
 const BAR = { light: '#F0F4F9', dark: '#131314' };
 // The anonymous pulse: the web-app address of the separate counting script (apps-script-pulse/Pulse.gs).
-// Empty means the app sends nothing at all.
+// Empty means the app sends nothing at all. Replace this after any Deploy that makes a new deployment.
 const PULSE_URL = 'https://script.google.com/macros/s/AKfycbzs1P1HO7nXv6YZ3sYcKeAedLLULPTaR2EicB2Bo73Seyv46QzW2WKG5TEs7r8z8NXVcA/exec';
 
 const VIEWS = [{ id: 'brief', n: 'Brief', ic: 'news' }, { id: 'watch', n: 'Watch', ic: 'watch' }, { id: 'learn', n: 'Learn', ic: 'school', opens: true }, { id: 'stars', n: 'Starred', ic: 'starOff', on: 'starOn' }];
@@ -1860,8 +1860,15 @@ function aiSetHtml() {
 function paintSet() { const el = $('#aiSet'); if (el && sheetIs('settings')) el.innerHTML = aiSetHtml(); }
 async function saveKey(k) {
   const out = $('#keyOut');
-  k = String(k || '').replace(/\s+/g, '');
-  if (!/^[\w-]{20,}$/.test(k)) { out.textContent = 'That doesn’t look like a Gemini API key. Copy it from Google AI Studio: it’s one long line of letters and numbers.'; return; }
+  // Only what's plainly wrong is turned away here; Google decides on the rest, so a new shape of key still works
+  k = String(k || '').replace(/\s+/g, '').replace(/^["'“‘<(\[]+|["'”’>)\].,;]+$/g, '');
+  const n = k.length;
+  if (!n) { out.textContent = 'Paste the key in first.'; return; }
+  if (/^[….]{2,}/.test(k) || n < 15) {
+    out.textContent = `That’s only ${n} character${n === 1 ? '' : 's'}, so it looks like the shortened key the list shows. Open the key itself on the API Keys page and copy it from there — a whole one is about 39 characters and starts with AIza.`;
+    return;
+  }
+  if (/[^\w-]/.test(k)) { out.textContent = 'That has characters a Gemini key doesn’t use: they’re only letters, numbers, - and _. Copy it again from the key’s own page.'; return; }
   out.innerHTML = '<span class="spinner" aria-hidden="true"></span>Checking it with Google…';
   try {
     const m = await Gm.client(k).models();
