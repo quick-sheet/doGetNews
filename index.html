@@ -1272,7 +1272,7 @@ function openSettings() {
     <h3 id="aiSetHead">Brief me with Gemini</h3>
     <p class="small">Gemini writes and reads you a briefing of the updates you’re looking at. It runs on your own Gemini API key, so it never uses anyone else’s. The key stays on this phone and is only ever sent to Google. <a ${attrs('https://aistudio.google.com/apikey')}>Get a free key in Google AI Studio</a>.</p>
     <div id="aiSet">${aiSetHtml()}</div>
-    <p class="small">On Gemini’s free tier, Google may use what’s sent to improve its products; here that’s only these public updates. To be safe, restrict the key in Google Cloud to the Generative Language API and to https://quick-sheet.github.io/*.</p>
+    <p class="small">On Gemini’s free tier, Google may use what’s sent to improve its products; here that’s only these public updates. In Google Cloud you can restrict the key to the Gemini API. Keeping the project on the free tier is what stops a copied key costing anything.</p>
 
     <h3>About</h3>
     <div class="group">
@@ -1864,11 +1864,11 @@ async function saveKey(k) {
   k = String(k || '').replace(/\s+/g, '').replace(/^["'“‘<(\[]+|["'”’>)\].,;]+$/g, '');
   const n = k.length;
   if (!n) { out.textContent = 'Paste the key in first.'; return; }
+  // Nothing is judged on its shape beyond this: Google's keys have changed form before and will again
   if (/^[….]{2,}/.test(k) || n < 15) {
-    out.textContent = `That’s only ${n} character${n === 1 ? '' : 's'}, so it looks like the shortened key the list shows. Open the key itself on the API Keys page and copy it from there — a whole one is about 39 characters and starts with AIza.`;
+    out.textContent = `That’s only ${n} character${n === 1 ? '' : 's'}, so it looks like the shortened key the list shows rather than the whole one. Open the key itself on the API Keys page and copy it from there.`;
     return;
   }
-  if (/[^\w-]/.test(k)) { out.textContent = 'That has characters a Gemini key doesn’t use: they’re only letters, numbers, - and _. Copy it again from the key’s own page.'; return; }
   out.innerHTML = '<span class="spinner" aria-hidden="true"></span>Checking it with Google…';
   try {
     const m = await Gm.client(k).models();
