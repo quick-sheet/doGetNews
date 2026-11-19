@@ -540,8 +540,8 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <div class="mini" id="mini" role="region" aria-label="Your brief" hidden></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=13"></script>
-<script src="gemini.js?v=13"></script>
+<script src="core.js?v=14"></script>
+<script src="gemini.js?v=14"></script>
 <script>
 (() => {
 'use strict';
@@ -1962,13 +1962,47 @@ function aiSetHtml() {
   return `<div class="group"><div class="row"><span class="lead">${icon('key')}</span>
       <span class="txt">Key ending ${esc(AI.key.slice(-4))}<small id="keyOut" aria-live="polite">${m && m.at ? esc('Writes with ' + m.text + ', reads with ' + m.tts[0]) : 'Saved on this phone'}</small></span>
       <button class="ib sl" type="button" data-act="key-test" aria-label="Check the key with Google" title="Check">${icon('refresh')}</button>
-      <button class="ib sl" type="button" data-act="key-remove" aria-label="Remove the key from this phone" title="Remove">${icon('del')}</button></div></div>
+      <button class="ib sl" type="button" data-act="key-remove" aria-label="Remove the key from this phone" title="Remove">${icon('del')}</button></div>
+      <div class="row"><span class="txt"><button class="chip sl" type="button" data-act="key-check">Check the models</button>
+        <small id="aiCheck" aria-live="polite">Asks each model your key offers for a single word, and times it. Useful when a brief won’t come.</small></span></div></div>
     <h4 class="sub">Voice</h4>
     <div class="chipset">${Gm.VOICES.map((v) => `<button class="chip sl" type="button" data-voice="${v.id}" aria-pressed="${AI.voice === v.id}">${icon('check')}${esc(v.id)}<span class="c">${esc(v.d)}</span></button>`).join('')}</div>
     <h4 class="sub">Length</h4>
     <div class="chipset">${lenChips('data-setlen')}</div>`;
 }
 function paintSet() { const el = $('#aiSet'); if (el && sheetIs('settings')) el.innerHTML = aiSetHtml(); }
+// Each model your key offers, asked for one word and timed. Nothing is guessed from it: it reports what
+// happened, so a slow model, a refused setting and a brief that is too long can be told apart.
+let checking = false;
+async function checkModels() {
+  if (!$('#aiCheck') || !aiOn() || checking) return;
+  checking = true;
+  // Settings is redrawn as the check runs, so the place to write is looked up each time rather than held
+  const put = (html) => { const el = $('#aiCheck'); if (el) el.innerHTML = html; };
+  const say = (lines, note) => put(lines.map((x) => esc(x)).join('<br>') + (note ? '<br>' + esc(note) : ''));
+  const secs = (ms) => (ms / 1000).toFixed(1) + 's';
+  try {
+    put('<span class="spinner" aria-hidden="true"></span>Asking Google which models this key offers…');
+    const brief = Gm.client(AI.key, { wait: { first: 20000, quiet: 10000, write: 30000 } });
+    let m = AI.models;
+    try { m = await brief.models(); AI.models = m; saveAI(); paintSet(); } catch (e) { /* carry on with what we know */ }
+    const names = (m && m.texts && m.texts.length ? m.texts : [(m && m.text) || Gm.FALLBACK.text]).slice(0, 3);
+    const lines = [];
+    for (let i = 0; i < names.length; i++) {
+      say(lines, 'Asking ' + names[i] + '…');
+      const r = await brief.tryOut(names[i], null);
+      lines.push(r.ok
+        ? `${r.name}: answered in ${secs(r.took)}${r.first ? ', first words after ' + secs(r.first) : ''}${r.plain ? ', and would not promise JSON' : ''}`
+        : `${r.name}: ${r.why}`);
+    }
+    const quick = lines.filter((x) => /answered in [0-9]\./.test(x)).length;
+    say(lines, quick ? 'A model that answers one word quickly should manage a brief. If one here is much faster, the app will use it.'
+      : 'None of them answered quickly, so the hold-up is Google’s end rather than the length of the brief.');
+  } catch (e) {
+    put(esc(e && e.message ? e.message : 'The check couldn’t run.'));
+  } finally { checking = false; }
+}
+
 async function saveKey(k) {
   const out = $('#keyOut');
   // Only what's plainly wrong is turned away here; Google decides on the rest, so a new shape of key still works
@@ -2187,6 +2221,7 @@ document.addEventListener('click', (e) => {
     case 'ai-rate': AI.rate = RATES[(RATES.indexOf(AI.rate || 1) + 1) % RATES.length]; saveAI(); aud.playbackRate = AI.rate; paintAI(); break;
     case 'ai-settings': openSettings(); setTimeout(() => { const h = $('#aiSetHead'); if (h) h.scrollIntoView({ block: 'start' }); }, 50); break;
     case 'key-test': testKey(); break;
+    case 'key-check': checkModels(); break;
     case 'key-remove': removeKey(); break;
   }
 });

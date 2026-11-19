@@ -54,12 +54,12 @@
       .filter((m) => (m.supportedGenerationMethods || ['generateContent']).indexOf('generateContent') >= 0)
       .map((m) => String(m.name || '').replace(/^models\//, '')).filter(Boolean);
     const other = /tts|image|live|audio|embed|vision|lite|thinking|learnlm|robotics|computer|native|nano|aqa|gemma|veo|imagen|lyria/;
-    let text = all.indexOf('gemini-flash-latest') >= 0 ? 'gemini-flash-latest' : '';
-    if (!text) {
-      const flash = all.filter((n) => /^gemini-\d+(\.\d+)?-flash(-[\w.-]+)?$/.test(n) && !other.test(n.replace(/-preview.*$/, '')));
-      flash.sort((a, b) => pre(a) - pre(b) || ver(b) - ver(a) || a.length - b.length);
-      text = flash[0] || all.filter((n) => /flash/.test(n) && !other.test(n))[0] || FALLBACK.text;
-    }
+    // A named model before an alias: -latest is pointed wherever Google likes, and can be moved to a
+    // slower one overnight without a word. The alias stays on the list to fall back to.
+    const flash = all.filter((n) => /^gemini-\d+(\.\d+)?-flash(-[\w.-]+)?$/.test(n) && !other.test(n.replace(/-preview.*$/, '')));
+    flash.sort((a, b) => pre(a) - pre(b) || ver(b) - ver(a) || a.length - b.length);
+    const text = flash[0] || (all.indexOf('gemini-flash-latest') >= 0 ? 'gemini-flash-latest' : '')
+      || all.filter((n) => /flash/.test(n) && !other.test(n))[0] || FALLBACK.text;
     // A couple of others to fall back on when the first is overloaded
     const spare = all.filter((n) => n !== text && /flash/.test(n) && !/tts|image|live|audio|embed|vision|native|nano|thinking|learnlm|robotics|computer|gemma/.test(n));
     spare.sort((a, b) => pre(a) - pre(b) || (/lite/.test(a) ? 1 : 0) - (/lite/.test(b) ? 1 : 0) || ver(b) - ver(a) || a.length - b.length);
@@ -380,6 +380,21 @@
       }
       throw last;
     }
+    // One word, asked of one model, timed. Enough to tell a model that is slow at everything from one
+    // that turns a setting down, and either from a brief that is simply too much to ask.
+    async function tryOut(name, signal) {
+      const req = { system: 'Answer with one word and nothing else.', user: 'Reply with the word ready.' };
+      const began = Date.now();
+      let first = 0;
+      const tick = () => { if (!first) first = Date.now() - began; };
+      try {
+        const got = await write([name], req, signal, tick);
+        return { name, ok: true, first, took: Date.now() - began, plain: got.plain, said: got.text.trim().slice(0, 40) };
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+        return { name, ok: false, first, took: Date.now() - began, kind: e.kind, why: e.message };
+      }
+    }
     // Two ways of naming the voice: the long-standing one, and the shorter one newer models document
     const voiceBody = (text, voice, form) => ({ contents: [{ role: 'user', parts: [{ text: sayable(text) }] }],
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: form === 'short' ? { voiceConfig: { voice } } : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } });
@@ -410,6 +425,7 @@
       models,
       write: (models, req, signal, onText) => stepped('write', write(models, req, signal, onText)),
       speak: (list, voice, text, form, signal) => stepped('speak', speak(list, voice, text, form, signal)),
+      tryOut,
       call,
     };
   }
