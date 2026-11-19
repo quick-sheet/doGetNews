@@ -198,7 +198,11 @@
       e.zero = /limit:\s*0\b/.test(all);
       e.daily = e.zero || /per ?day|PerDay|daily/i.test(all);
       e.wait = retry ? Math.round(parseFloat(retry) * 1000) : 0;
-      e.message = e.daily ? QUOTA.any : 'Gemini’s free tier needs a moment. Try again in a minute.';
+      // A wait of more than a few seconds is a limit being enforced, not a blip: say so rather than
+      // sitting silently through it, which reads as the app having hung
+      e.message = e.daily ? QUOTA.any
+        : e.wait > 10e3 ? `Gemini is holding you to its rate limit and asked for ${Math.round(e.wait / 1000)} seconds. That is this project’s allowance, not the app: check Usage and Billing in Google AI Studio.`
+          : 'Gemini’s free tier needs a moment. Try again in a minute.';
     } else if (status === 403 || st === 'PERMISSION_DENIED') { e.kind = 'denied'; e.message = 'Google turned the key away. If you restricted it, allow the Gemini API, and check the key isn’t tied to particular IP addresses.'; }
     else if (status === 404 || st === 'NOT_FOUND') { e.kind = 'model'; e.message = 'That Gemini model isn’t available to this key.'; }
     else if (status >= 500) { e.kind = 'busy'; e.message = 'Gemini is busy just now. Try again in a minute.'; }
@@ -338,7 +342,7 @@
         try { return await fn(); } catch (e) {
           if (e.name === 'AbortError') throw e;
           const brief = e.kind === 'busy' || (e.kind === 'quota' && !e.daily);
-          if (!brief || k >= 2 || (e.wait || 0) > 65e3) throw e;
+          if (!brief || k >= 2 || (e.wait || 0) > 10e3) throw e;   // a long wait is reported, not sat through
           await sleep(e.wait || 1500 * (k + 1));
           if (signal && signal.aborted) throw aborted();
         }

@@ -540,8 +540,8 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <div class="mini" id="mini" role="region" aria-label="Your brief" hidden></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=14"></script>
-<script src="gemini.js?v=14"></script>
+<script src="core.js?v=15"></script>
+<script src="gemini.js?v=15"></script>
 <script>
 (() => {
 'use strict';
@@ -1987,17 +1987,22 @@ async function checkModels() {
     let m = AI.models;
     try { m = await brief.models(); AI.models = m; saveAI(); paintSet(); } catch (e) { /* carry on with what we know */ }
     const names = (m && m.texts && m.texts.length ? m.texts : [(m && m.text) || Gm.FALLBACK.text]).slice(0, 3);
-    const lines = [];
+    const lines = [], got = [];
     for (let i = 0; i < names.length; i++) {
       say(lines, 'Asking ' + names[i] + '…');
       const r = await brief.tryOut(names[i], null);
+      got.push(r);
       lines.push(r.ok
         ? `${r.name}: answered in ${secs(r.took)}${r.first ? ', first words after ' + secs(r.first) : ''}${r.plain ? ', and would not promise JSON' : ''}`
         : `${r.name}: ${r.why}`);
     }
-    const quick = lines.filter((x) => /answered in [0-9]\./.test(x)).length;
-    say(lines, quick ? 'A model that answers one word quickly should manage a brief. If one here is much faster, the app will use it.'
-      : 'None of them answered quickly, so the hold-up is Google’s end rather than the length of the brief.');
+    // Reading the list worked, or there would be no list. So when nothing will write, the thing they have in
+    // common is the project behind the key, and that is where to look first: not the app, and not the model.
+    const ok = got.filter((r) => r.ok).length;
+    const refused = got.every((r) => !r.ok && /quota|busy|slow/.test(r.kind || 'slow'));
+    say(lines, ok ? 'A model that answers one word quickly should manage a brief. If one here is much faster, the app will use it.'
+      : refused ? 'Listing the models worked and writing didn’t, which points at this key’s project rather than the app: open Google AI Studio, pick that project, and look at Usage, Rate Limit and Billing.'
+        : 'None of them would write. The messages above are Google’s own words for why.');
   } catch (e) {
     put(esc(e && e.message ? e.message : 'The check couldn’t run.'));
   } finally { checking = false; }
