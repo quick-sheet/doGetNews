@@ -13,9 +13,10 @@
   const FALLBACK = { text: 'gemini-flash-latest', texts: ['gemini-flash-latest', 'gemini-flash-lite-latest'], tts: ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'] };
   const MOVE_ON = /^(busy|model|slow)$/;   // this model won't do: another might
   // Nothing is left waiting for ever: a call that hasn't answered by then is given up on
-  // The brief arrives in pieces, so slow and stuck are told apart: quiet is how long it may say nothing
-  // for, and write is the outside limit for the whole thing however steadily it comes.
-  const WAIT = { models: 30000, write: 240000, quiet: 25000, speak: 90000 };
+  // The brief arrives in pieces, so slow and stuck are told apart. Nothing comes while the model is still
+  // thinking, so first is the wait for the opening words; quiet is the gap allowed once they are coming;
+  // write is the outside limit on the whole thing however steadily it arrives.
+  const WAIT = { models: 30000, first: 90000, quiet: 25000, write: 240000, speak: 90000 };
   // A brief is a summary of words it has been handed, not a problem to solve, so there is little to think
   // about. LOW is the one level every current flash model takes; one that won't is asked without it.
   const THINK = 'LOW';
@@ -268,11 +269,12 @@
       const ac = new AbortController();
       const stop = () => ac.abort();
       if (signal) { if (signal.aborted) throw aborted(); signal.addEventListener('abort', stop); }
-      let why = '', idle = null;
+      let why = '', idle = null, going = false;
       const quit = (k) => { why = k; ac.abort(); };
-      const clock = () => { clearTimeout(idle); idle = setTimeout(() => quit('quiet'), wait.quiet); };
+      // Before the first piece there is nothing to go quiet about: it is simply taking its time
+      const clock = () => { clearTimeout(idle); idle = setTimeout(() => quit(going ? 'quiet' : 'first'), going ? wait.quiet : wait.first); };
       const whole = setTimeout(() => quit('late'), wait.write);
-      const gaveUp = () => (why === 'quiet' ? wentQuiet(wait.quiet) : why === 'late' ? tooSlow(wait.write) : null);
+      const gaveUp = () => (why === 'quiet' ? wentQuiet(wait.quiet) : why === 'first' ? tooSlow(wait.first) : why === 'late' ? tooSlow(wait.write) : null);
       try {
         let res;
         clock();
@@ -309,6 +311,7 @@
               if (!piece || piece === '[DONE]') continue;
               let j = null;
               try { j = JSON.parse(piece); } catch (e) { continue; }   // a half-written piece: the next one carries it
+              going = true; clock();   // something is coming now, so the shorter gap applies from here
               if (j.promptFeedback && j.promptFeedback.blockReason) blocked = j.promptFeedback.blockReason;
               const c = j.candidates && j.candidates[0];
               if (c && c.finishReason) end = c.finishReason;
