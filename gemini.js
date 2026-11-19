@@ -13,7 +13,15 @@
   const FALLBACK = { text: 'gemini-flash-latest', texts: ['gemini-flash-latest', 'gemini-flash-lite-latest'], tts: ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'] };
   const MOVE_ON = /^(busy|model|slow)$/;   // this model won't do: another might
   // Nothing is left waiting for ever: a call that hasn't answered by then is given up on
-  const WAIT = { models: 30000, write: 75000, speak: 90000 };
+  // The brief arrives in pieces, so slow and stuck are told apart: quiet is how long it may say nothing
+  // for, and write is the outside limit for the whole thing however steadily it comes.
+  const WAIT = { models: 30000, write: 240000, quiet: 25000, speak: 90000 };
+  // A brief is a summary of words it has been handed, not a problem to solve, so there is little to think
+  // about. LOW is the one level every current flash model takes; one that won't is asked without it.
+  const THINK = 'LOW';
+  // Asked three ways, in order, and only ever stepping down when a model turns the setting down flat:
+  // as little thinking as it will do and JSON back, then JSON without the thinking, then neither.
+  const TRY = [{ json: 1, think: 1 }, { json: 1, think: 0 }, { json: 0, think: 0 }];
   const MAX_ITEMS = 150;    // a quarter can hold hundreds: the most important 150 go in
   const FIRST = 520;        // characters in the first spoken part, so the voice starts in seconds
   const NEXT = 1100;        // characters in each part after that
@@ -224,6 +232,7 @@
     const wait = Object.assign({}, WAIT, opts.wait || {});
     const aborted = () => { const e = new Error('stopped'); e.name = 'AbortError'; return e; };
     const tooSlow = (ms) => { const n = Math.round(ms / 1000); const e = new Error(`Gemini didn’t answer within ${n} second${n === 1 ? '' : 's'}. It may be busy - try again.`); e.kind = 'slow'; return e; };
+    const wentQuiet = (ms) => { const n = Math.round(ms / 1000); const e = new Error(`Gemini stopped partway through, with nothing more for ${n} seconds. Try again.`); e.kind = 'slow'; return e; };
     async function call(path, body, signal, ms) {
       ms = ms || wait.write;
       // The caller's own stop, and a clock, both end the call
@@ -252,6 +261,74 @@
         if (signal) signal.removeEventListener('abort', stop);
       }
     }
+    // The brief comes back a piece at a time. The clock restarts with every piece, so one that keeps
+    // coming is never thrown away for taking a while, and the app can show it being written. Where the
+    // browser won't hand over the pieces, the whole answer is read at once instead and nothing is lost.
+    async function flow(path, body, signal, onText) {
+      const ac = new AbortController();
+      const stop = () => ac.abort();
+      if (signal) { if (signal.aborted) throw aborted(); signal.addEventListener('abort', stop); }
+      let why = '', idle = null;
+      const quit = (k) => { why = k; ac.abort(); };
+      const clock = () => { clearTimeout(idle); idle = setTimeout(() => quit('quiet'), wait.quiet); };
+      const whole = setTimeout(() => quit('late'), wait.write);
+      const gaveUp = () => (why === 'quiet' ? wentQuiet(wait.quiet) : why === 'late' ? tooSlow(wait.write) : null);
+      try {
+        let res;
+        clock();
+        try {
+          res = await f(API + path, { method: 'POST', signal: ac.signal,
+            headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        } catch (e) {
+          const up = gaveUp(); if (up) throw up;
+          if (e && e.name === 'AbortError') throw e;
+          throw problem(0, null);
+        }
+        if (!res.ok) { let j = null; try { j = await res.json(); } catch (e) { j = null; } throw problem(res.status, j); }
+        if (!res.body || typeof res.body.getReader !== 'function') {   // no pieces to be had: read it whole
+          let j = null;
+          try { j = await res.json(); } catch (e) { const up = gaveUp(); if (up) throw up; j = null; }
+          const t = textOf(j);
+          if (onText) onText(t);
+          return t;
+        }
+        const reader = res.body.getReader(), dec = new TextDecoder();
+        let buf = '', text = '', end = '', blocked = '';
+        try {
+          for (;;) {
+            const step = await reader.read();
+            if (step.done) break;
+            clock();
+            buf += dec.decode(step.value, { stream: true });
+            let at;
+            while ((at = buf.indexOf('\n')) >= 0) {
+              const line = buf.slice(0, at).trim();
+              buf = buf.slice(at + 1);
+              if (line.slice(0, 5) !== 'data:') continue;
+              const piece = line.slice(5).trim();
+              if (!piece || piece === '[DONE]') continue;
+              let j = null;
+              try { j = JSON.parse(piece); } catch (e) { continue; }   // a half-written piece: the next one carries it
+              if (j.promptFeedback && j.promptFeedback.blockReason) blocked = j.promptFeedback.blockReason;
+              const c = j.candidates && j.candidates[0];
+              if (c && c.finishReason) end = c.finishReason;
+              const add = ((c && c.content && c.content.parts) || [])
+                .filter((p) => p && !p.thought && typeof p.text === 'string').map((p) => p.text).join('');
+              if (add) { text += add; if (onText) onText(text); }
+            }
+          }
+        } catch (e) {
+          const up = gaveUp(); if (up) throw up;
+          if (e && e.name === 'AbortError') throw e;
+          throw problem(0, null);
+        }
+        if (!text.trim()) throw emptyReply(blocked || /SAFETY|BLOCK|PROHIBITED/.test(end) ? 'blocked' : 'empty');
+        return text;
+      } finally {
+        clearTimeout(whole); clearTimeout(idle);
+        if (signal) signal.removeEventListener('abort', stop);
+      }
+    }
     // A moment's busyness (a 503, or a per-minute limit) is waited out, twice at most
     async function patient(fn, signal) {
       for (let k = 0; ; k++) {
@@ -276,20 +353,23 @@
     }
     // Written by the first model that will: one that's overloaded, missing or slow hands on to the next, and
     // a model that won't promise JSON on its own is asked again plainly (the reply is read either way)
-    async function write(models, req, signal) {
+    async function write(models, req, signal, onText) {
       const list = (Array.isArray(models) ? models : [models]).filter(Boolean);
       let last = null;
       for (let i = 0; i < list.length; i++) {
-        for (let plain = 0; plain < 2; plain++) {
+        for (let step = 0; step < TRY.length; step++) {
+          const opt = TRY[step];
           const body = { systemInstruction: { parts: [{ text: req.system }] }, contents: [{ role: 'user', parts: [{ text: req.user }] }],
-            generationConfig: Object.assign({ temperature: 0.4 }, plain ? {} : { responseMimeType: 'application/json' }) };
+            generationConfig: Object.assign({ temperature: 0.4 },
+              opt.json ? { responseMimeType: 'application/json' } : {},
+              opt.think ? { thinkingConfig: { thinkingLevel: THINK } } : {}) };
           try {
-            const text = textOf(await patient(() => call('models/' + encodeURIComponent(list[i]) + ':generateContent', body, signal, wait.write), signal));
-            return { text, model: list[i], plain: !!plain };
+            const text = await patient(() => flow('models/' + encodeURIComponent(list[i]) + ':streamGenerateContent?alt=sse', body, signal, onText), signal);
+            return { text, model: list[i], plain: !opt.json };
           } catch (e) {
             if (e.name === 'AbortError') throw e;
             last = e;
-            if (!plain && (e.kind === 'form' || (e.kind === 'other' && e.status === 400))) continue;   // it may simply not take that setting
+            if (step < TRY.length - 1 && (e.kind === 'form' || (e.kind === 'other' && e.status === 400))) continue;   // it may simply not take that setting
             break;
           }
         }
@@ -325,13 +405,13 @@
     const stepped = (step, p) => p.catch((e) => { if (e && e.kind === 'quota' && e.daily && QUOTA[step]) e.message = QUOTA[step]; throw e; });
     return {
       models,
-      write: (models, req, signal) => stepped('write', write(models, req, signal)),
+      write: (models, req, signal, onText) => stepped('write', write(models, req, signal, onText)),
       speak: (list, voice, text, form, signal) => stepped('speak', speak(list, voice, text, form, signal)),
       call,
     };
   }
 
-  const Gem = { API, VOICES, LENGTHS, FALLBACK, MOVE_ON, WAIT, MAX_ITEMS, FIRST, NEXT, QUOTA, sayable, pickModels, request, parseBrief, parts, wav, b64bytes, secondsOf, problem, textOf, audioOf, client };
+  const Gem = { API, VOICES, LENGTHS, FALLBACK, MOVE_ON, WAIT, THINK, TRY, MAX_ITEMS, FIRST, NEXT, QUOTA, sayable, pickModels, request, parseBrief, parts, wav, b64bytes, secondsOf, problem, textOf, audioOf, client };
   if (typeof module !== 'undefined' && module.exports) module.exports = Gem;
   else root.Gem = Gem;
 })(typeof self !== 'undefined' ? self : this);

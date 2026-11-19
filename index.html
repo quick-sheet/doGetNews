@@ -540,8 +540,8 @@ dialog.sheet.springing { transition: transform .22s var(--ease); }
 <div class="mini" id="mini" role="region" aria-label="Your brief" hidden></div>
 <div class="toast" id="toast" role="status" popover="manual"></div>
 
-<script src="core.js?v=11"></script>
-<script src="gemini.js?v=11"></script>
+<script src="core.js?v=12"></script>
+<script src="gemini.js?v=12"></script>
 <script>
 (() => {
 'use strict';
@@ -1646,8 +1646,10 @@ async function makeRun(r, req, fresh) {
     else {
       let m = await aiModels(cli, r.ac.signal), got;
       const list = (x) => (x.texts && x.texts.length ? x.texts : [x.text]);
-      try { got = await cli.write(list(m), req, r.ac.signal); }
-      catch (e) { if (e.kind !== 'model') throw e; m = await aiModels(cli, r.ac.signal, true); got = await cli.write(list(m), req, r.ac.signal); }
+      // The words arrive as they're written, so the wait shows something happening rather than a spinner
+      const watch = (t) => { if (run !== r || r.state !== 'writing') return; const n = t.length; if (n - (r.wrote || 0) < 160) return; r.wrote = n; paintAI(); };
+      try { got = await cli.write(list(m), req, r.ac.signal, watch); }
+      catch (e) { if (e.kind !== 'model') throw e; r.wrote = 0; m = await aiModels(cli, r.ac.signal, true); got = await cli.write(list(m), req, r.ac.signal, watch); }
       // Whichever model answered goes first next time
       if (got.model !== list(m)[0]) { AI.models.text = got.model; AI.models.texts = [got.model].concat(list(m).filter((x) => x !== got.model)); saveAI(); paintSet(); }
       r.brief = Gm.parseBrief(got.text, req.used);
@@ -1822,7 +1824,9 @@ function statusHtml() {
     return `<span class="err">${esc((e.message || 'Something went wrong.') + earlier)}</span><span class="acts">${fix}</span>`;
   }
   if (r.again && r.silent) return 'Read earlier today. Its recording has gone, so press play to have it read again.';
-  if (r.state === 'writing') return `${spin}Gemini is writing your brief…` + (now() - r.started > 15000 ? '<small>Still going. The first one of the day can take a minute.</small>' : '');
+  if (r.state === 'writing') return `${spin}Gemini is writing your brief…`
+    + (r.wrote ? `<small>${C.plural(Math.round(r.wrote / 5), 'word', 'words')} so far.</small>`
+      : now() > r.started + 15000 ? '<small>Still going. The first one of the day can take a minute.</small>' : '');
   if (r.state === 'recording') return `${spin}Recording it in ${esc(r.voice)}’s voice…`;
   const failedAt = r.parts.findIndex((p) => p.state === 'failed');
   if (r.ttsErr && failedAt === 0) return `<span class="err">Couldn’t record the voice. ${esc(r.ttsErr.message)} The written brief is below.</span>`;
